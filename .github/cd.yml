@@ -1,0 +1,39 @@
+name: Run CI/CD
+
+on: [push, pull_request]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.GCLOUD_AUTH }}"
+
+      - name: Setup Google Cloud
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCLOUD_AUTH }}
+          project_id: ${{ secrets.PROJECT_ID }}
+
+      - name: Configure docker for artifact registry
+        run: |
+          gcloud auth configure-docker asia-northeast1-docker.pkg.dev
+
+      - name: set TAG
+        run: |
+          echo "TAG=$(echo $GITHUB_REF | awk -F/ '{print $NF}')" >> $GITHUB_ENV
+
+      - name: Build
+        run: docker build -t asia-northeast1.pkg.dev/${{ secrets.PROJECT_ID }}/go-api/api-image:${{ env.TAG }} .
+
+      - name: Push
+        run: |
+          docker push asia-northeast1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/go-api/api-image:${{ env.TAG }}
