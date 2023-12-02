@@ -10,6 +10,8 @@ RUN go mod download
 
 COPY *.go ./
 
+RUN go get -u github.com/taro-28/saas-sample-api/graph
+
 RUN go build -o /server
 
 EXPOSE 8080
