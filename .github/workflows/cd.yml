@@ -26,13 +26,12 @@ jobs:
         run: |
           gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
-      - name: set TAG
-        run: |
-          echo "TAG=$(echo $GITHUB_REF | awk -F/ '{print $NF}')" >> $GITHUB_ENV
-
       - name: Build
-        run: docker build -t asia-northeast1.pkg.dev/${{ secrets.PROJECT_ID }}/cloud-run-source-deploy/${{ env.TAG }} .
+        run: |
+          TAG=$(echo $GITHUB_REF | awk -F/ '{print $NF}')
+          IMAGE_NAME=asia-northeast1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/cloud-run-source-deploy/${TAG}
+          docker build -t ${IMAGE_NAME} .
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
 
       - name: Push
-        run: |
-          docker push asia-northeast1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/cloud-run-source-deploy/${{ env.TAG }}
+        run: docker push ${{ env.IMAGE_NAME }}
