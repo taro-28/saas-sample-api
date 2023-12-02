@@ -42,5 +42,4 @@ jobs:
             --project=${{ secrets.PROJECT_ID }} \
             --image=${IMAGE_NAME} \
             --region=asia-northeast1 \
-            --service-account=${{ secrets.SERVICE_ACCOUNT }} \
-            --allow-unauthenticated
+            --service-account=${{ secrets.SERVICE_ACCOUNT }}
