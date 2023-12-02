@@ -8,9 +8,7 @@ COPY go.mod ./
 COPY go.sum ./
 RUN go mod download
 
-COPY *.go ./
-
-RUN go get -u github.com/taro-28/saas-sample-api/graph
+COPY . .
 
 RUN go build -o /server
 
