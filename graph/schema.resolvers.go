@@ -17,7 +17,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) 
 	randNumber, _ := rand.Int(rand.Reader, big.NewInt(100))
 	todo := &model.Todo{
 		Text: input.Text,
-		ID:   fmt.Sprintf("T%d", randNumber),
+		ID:   fmt.Sprintf("TTT%d", randNumber),
 		User: &model.User{ID: input.UserID, Name: "user " + input.UserID},
 	}
 	r.todos = append(r.todos, todo)
