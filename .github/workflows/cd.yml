@@ -31,7 +31,8 @@ jobs:
           echo "TAG=$(echo $GITHUB_REF | awk -F/ '{print $NF}')" >> $GITHUB_ENV
 
       - name: Build
-        run: docker build -t asia-northeast1.pkg.dev/${{ secrets.PROJECT_ID }}/cloud-run-source-deploy/${{ env.TAG }} .
+        run: docker build . --file DOCKERFILE_LOCATION -t asia-northeast1.pkg.dev/${{ secrets.PROJECT_ID }}/cloud-run-source-deploy/${{ env.TAG }} .
+        working-directory: WORKING_DIRECTORY
 
       - name: Push
         run: |
