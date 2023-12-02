@@ -10,7 +10,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build --platform linux/amd64 -o /server
+RUN go build -o /server
 
 EXPOSE 8080
 

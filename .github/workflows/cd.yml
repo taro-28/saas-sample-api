@@ -30,7 +30,7 @@ jobs:
         run: |
           TAG=$(echo $GITHUB_REF | awk -F/ '{print $NF}')
           IMAGE_NAME=asia-northeast1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/cloud-run-source-deploy/${TAG}
-          docker build -t ${IMAGE_NAME} .
+          docker build --platform linux/amd64 -t ${IMAGE_NAME} .
           echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
 
       - name: Push
