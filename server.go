@@ -16,10 +16,7 @@ const defaultPort = "8080"
 
 func main() {
 	// Load connection string from .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("failed to load env", err)
-	}
+	godotenv.Load()
 
 	port := os.Getenv("PORT")
 	if port == "" {
