@@ -7,8 +7,11 @@ package graph
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"fmt"
+	"log"
 	"math/big"
+	"os"
 
 	"github.com/taro-28/saas-sample-api/graph/model"
 )
@@ -25,6 +28,36 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) 
 }
 
 func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
+	// Open a connection to PlanetScale
+	db, err := sql.Open("mysql", os.Getenv("DSN"))
+	if err != nil {
+		log.Fatalf("failed to connect: %v", err)
+	}
+
+	rows, err := db.Query("select id, text from todos;")
+	if err != nil {
+		log.Fatalf("failed to query: %v", err)
+	}
+
+	r.todos = []*model.Todo{}
+
+	for rows.Next() {
+		var id string
+		var text string
+		if err := rows.Scan(&id, &text); err != nil {
+			log.Fatalf("failed to scan: %v", err)
+		}
+		fmt.Printf("id: %s, text: %s\n", id, text)
+
+		r.todos = append(r.todos, &model.Todo{
+			ID:   id,
+			Text: text,
+		})
+	}
+
+	defer rows.Close()
+	defer db.Close()
+
 	return r.todos, nil
 }
 
