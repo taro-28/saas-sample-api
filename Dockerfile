@@ -3,7 +3,7 @@
 FROM golang:1.21.3-alpine
 
 ARG DSN
-ENV DSN=${DSN}
+ENV DSN=$DSN
 
 WORKDIR /app
 
