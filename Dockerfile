@@ -3,7 +3,7 @@
 FROM golang:1.21.3-alpine
 
 ARG DSN
-ENV DSN=$DSN
+ENV DSN=${DSN}
 
 WORKDIR /app
 
@@ -17,4 +17,4 @@ RUN go build -o /server
 
 EXPOSE 8080
 
-CMD ["DSN=${DSN}","/server"]
+CMD ["/server"]
