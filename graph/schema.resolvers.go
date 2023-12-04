@@ -20,15 +20,28 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) 
 	randNumber, _ := rand.Int(rand.Reader, big.NewInt(100))
 	todo := &model.Todo{
 		Text: input.Text,
-		ID:   fmt.Sprintf("TTT%d", randNumber),
+		ID:   randNumber.String(),
 		User: &model.User{ID: input.UserID, Name: "user " + input.UserID},
 	}
+
+	db, err := sql.Open("mysql", os.Getenv("DSN"))
+	if err != nil {
+		log.Fatalf("failed to connect: %v", err)
+	}
+
+	_, err = db.Exec("insert into todos (id, text) values (?, ?);", randNumber.Int64(), todo.Text)
+	if err != nil {
+		log.Fatalf("failed to insert: %v", err)
+	}
+
+	defer db.Close()
+
 	r.todos = append(r.todos, todo)
+
 	return todo, nil
 }
 
 func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	// Open a connection to PlanetScale
 	db, err := sql.Open("mysql", os.Getenv("DSN"))
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)
