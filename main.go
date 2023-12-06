@@ -9,7 +9,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
-	"github.com/taro-28/saas-sample-api/graph"
+	"github.com/taro-28/saas-sample-api/gql"
 )
 
 const defaultPort = "8080"
@@ -23,7 +23,7 @@ func main() {
 		port = defaultPort
 	}
 
-	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
+	srv := handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{}}))
 
 	http.Handle("/", playground.Handler("SaaS Sample API", "/query"))
 	http.Handle("/query", srv)
