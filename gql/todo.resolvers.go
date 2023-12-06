@@ -6,15 +6,59 @@ package gql
 
 import (
 	"context"
-	"fmt"
+	"crypto/rand"
+	"log"
+	"math/big"
+
+	"github.com/taro-28/saas-sample-api/db"
 )
 
 // CreateTodo is the resolver for the createTodo field.
 func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput) (*Todo, error) {
-	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
+	randNumber, _ := rand.Int(rand.Reader, big.NewInt(100))
+	todo := &Todo{
+		ID:      randNumber.String(),
+		Content: input.Content,
+	}
+
+	db := db.Get()
+	if _, err := db.Exec(
+		"insert into todos (id, text) values (?, ?);",
+		randNumber.Int64(),
+		todo.Content,
+	); err != nil {
+		log.Fatalf("failed to insert: %v", err)
+	}
+	defer db.Close()
+
+	return todo, nil
 }
 
 // Todos is the resolver for the todos field.
 func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
-	panic(fmt.Errorf("not implemented: Todos - todos"))
+	db := db.Get()
+	rows, err := db.Query("select id, text from todos;")
+	if err != nil {
+		log.Fatalf("failed to query: %v", err)
+	}
+
+	todos := []*Todo{}
+
+	for rows.Next() {
+		var id string
+		var text string
+		if err := rows.Scan(&id, &text); err != nil {
+			log.Fatalf("failed to scan: %v", err)
+		}
+
+		todos = append(todos, &Todo{
+			ID:      id,
+			Content: text,
+		})
+	}
+
+	defer rows.Close()
+	defer db.Close()
+
+	return todos, nil
 }
