@@ -1,10 +1,10 @@
 schema:
-  - graph/*.graphql
+  - gql/*.graphql
 
 # Where should the generated server code go?
 exec:
-  filename: graph/generated.go
-  package: graph
+  filename: gql/generated.go
+  package: gql
 
 # Uncomment to enable federation
 # federation:
@@ -13,14 +13,14 @@ exec:
 
 # Where should any generated models go?
 model:
-  filename: graph/model/models_gen.go
-  package: model
+  filename: gql/models_gen.go
+  package: gql
 
 # Where should the resolver implementations go?
 resolver:
   layout: follow-schema
-  dir: graph
-  package: graph
+  dir: gql
+  package: gql
   filename_template: "{name}.resolvers.go"
   # Optional: turn on to not generate template comments above resolvers
   # omit_template_comment: false
