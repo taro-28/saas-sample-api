@@ -18,6 +18,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput
 	todo := &models.Todo{
 		ID:      xid.New().String(),
 		Content: input.Content,
+		Done:    false,
 	}
 
 	db := db.Get()
@@ -36,7 +37,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput
 func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
 	db := db.Get()
 
-	rows, err := db.Query("select id, content from todos;")
+	rows, err := db.Query("select id, content, done from todos;")
 	if err != nil {
 		log.Fatalf("failed to query: %v", err)
 	}
@@ -46,13 +47,15 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
 	for rows.Next() {
 		var id string
 		var content string
-		if err := rows.Scan(&id, &content); err != nil {
+		var done bool
+		if err := rows.Scan(&id, &content, done); err != nil {
 			log.Fatalf("failed to scan: %v", err)
 		}
 
 		todos = append(todos, &Todo{
 			ID:      id,
 			Content: content,
+			Done:    done,
 		})
 	}
 
