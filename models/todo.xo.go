@@ -8,8 +8,9 @@ import (
 
 // Todo represents a row from 'saas-sample.todos'.
 type Todo struct {
-	ID   int    `json:"id"`   // id
-	Text string `json:"text"` // text
+	ID        int    `json:"id"`        // id
+	Content   string `json:"content"`   // content
+	Completed bool   `json:"completed"` // completed
 	// xo fields
 	_exists, _deleted bool
 }
@@ -33,24 +34,17 @@ func (t *Todo) Insert(ctx context.Context, db DB) error {
 	case t._deleted: // deleted
 		return logerror(&ErrInsertFailed{ErrMarkedForDeletion})
 	}
-	// insert (primary key generated and returned by database)
+	// insert (manual)
 	const sqlstr = `INSERT INTO saas-sample.todos (` +
-		`text` +
+		`id, content, completed` +
 		`) VALUES (` +
-		`?` +
+		`?, ?, ?` +
 		`)`
 	// run
-	logf(sqlstr, t.Text)
-	res, err := db.ExecContext(ctx, sqlstr, t.Text)
-	if err != nil {
+	logf(sqlstr, t.ID, t.Content, t.Completed)
+	if _, err := db.ExecContext(ctx, sqlstr, t.ID, t.Content, t.Completed); err != nil {
 		return logerror(err)
 	}
-	// retrieve id
-	id, err := res.LastInsertId()
-	if err != nil {
-		return logerror(err)
-	} // set primary key
-	t.ID = int(id)
 	// set exists
 	t._exists = true
 	return nil
@@ -66,11 +60,11 @@ func (t *Todo) Update(ctx context.Context, db DB) error {
 	}
 	// update with primary key
 	const sqlstr = `UPDATE saas-sample.todos SET ` +
-		`text = ? ` +
+		`content = ?, completed = ? ` +
 		`WHERE id = ?`
 	// run
-	logf(sqlstr, t.Text, t.ID)
-	if _, err := db.ExecContext(ctx, sqlstr, t.Text, t.ID); err != nil {
+	logf(sqlstr, t.Content, t.Completed, t.ID)
+	if _, err := db.ExecContext(ctx, sqlstr, t.Content, t.Completed, t.ID); err != nil {
 		return logerror(err)
 	}
 	return nil
@@ -92,15 +86,15 @@ func (t *Todo) Upsert(ctx context.Context, db DB) error {
 	}
 	// upsert
 	const sqlstr = `INSERT INTO saas-sample.todos (` +
-		`id, text` +
+		`id, content, completed` +
 		`) VALUES (` +
-		`?, ?` +
+		`?, ?, ?` +
 		`)` +
 		` ON DUPLICATE KEY UPDATE ` +
-		`text = VALUES(text)`
+		`id = VALUES(id), content = VALUES(content), completed = VALUES(completed)`
 	// run
-	logf(sqlstr, t.ID, t.Text)
-	if _, err := db.ExecContext(ctx, sqlstr, t.ID, t.Text); err != nil {
+	logf(sqlstr, t.ID, t.Content, t.Completed)
+	if _, err := db.ExecContext(ctx, sqlstr, t.ID, t.Content, t.Completed); err != nil {
 		return logerror(err)
 	}
 	// set exists
@@ -135,7 +129,7 @@ func (t *Todo) Delete(ctx context.Context, db DB) error {
 func TodoByID(ctx context.Context, db DB, id int) (*Todo, error) {
 	// query
 	const sqlstr = `SELECT ` +
-		`id, text ` +
+		`id, content, completed ` +
 		`FROM saas-sample.todos ` +
 		`WHERE id = ?`
 	// run
@@ -143,7 +137,7 @@ func TodoByID(ctx context.Context, db DB, id int) (*Todo, error) {
 	t := Todo{
 		_exists: true,
 	}
-	if err := db.QueryRowContext(ctx, sqlstr, id).Scan(&t.ID, &t.Text); err != nil {
+	if err := db.QueryRowContext(ctx, sqlstr, id).Scan(&t.ID, &t.Content, &t.Completed); err != nil {
 		return nil, logerror(err)
 	}
 	return &t, nil
