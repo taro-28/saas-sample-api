@@ -6,24 +6,17 @@ package gql
 
 import (
 	"context"
-	"crypto/rand"
-	"fmt"
 	"log"
-	"math/big"
 
+	"github.com/rs/xid"
 	"github.com/taro-28/saas-sample-api/db"
 	"github.com/taro-28/saas-sample-api/models"
 )
 
 // CreateTodo is the resolver for the createTodo field.
 func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput) (*Todo, error) {
-	randNumber, err := rand.Int(rand.Reader, big.NewInt(100))
-	if err != nil {
-		log.Fatalf("failed to generate random number: %v", err)
-	}
-
 	todo := &models.Todo{
-		ID:      int(randNumber.Int64()),
+		ID:      xid.New().String(),
 		Content: input.Content,
 	}
 
@@ -34,7 +27,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput
 	defer db.Close()
 
 	return &Todo{
-		ID:      fmt.Sprintf("%d", todo.ID),
+		ID:      todo.ID,
 		Content: todo.Content,
 	}, nil
 }
@@ -43,7 +36,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput
 func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
 	db := db.Get()
 
-	rows, err := db.Query("select id, text from todos;")
+	rows, err := db.Query("select id, content from todos;")
 	if err != nil {
 		log.Fatalf("failed to query: %v", err)
 	}
@@ -52,17 +45,18 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
 
 	for rows.Next() {
 		var id string
-		var text string
-		if err := rows.Scan(&id, &text); err != nil {
+		var content string
+		if err := rows.Scan(&id, &content); err != nil {
 			log.Fatalf("failed to scan: %v", err)
 		}
 
 		todos = append(todos, &Todo{
 			ID:      id,
-			Content: text,
+			Content: content,
 		})
 	}
 
+	// TODO このdeferの位置は正しいか？
 	defer rows.Close()
 	defer db.Close()
 
