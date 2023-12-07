@@ -48,7 +48,7 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
 		var id string
 		var content string
 		var done bool
-		if err := rows.Scan(&id, &content, done); err != nil {
+		if err := rows.Scan(&id, &content, &done); err != nil {
 			log.Fatalf("failed to scan: %v", err)
 		}
 
