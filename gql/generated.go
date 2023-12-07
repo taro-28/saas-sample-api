@@ -2485,8 +2485,6 @@ func (ec *executionContext) unmarshalInputCreateTodoInput(ctx context.Context, o
 		}
 		switch k {
 		case "content":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("content"))
 			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
