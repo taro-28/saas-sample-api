@@ -23,8 +23,8 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput
 	}
 
 	todo := &models.Todo{
-		ID:   int(randNumber.Int64()),
-		Text: input.Content,
+		ID:      int(randNumber.Int64()),
+		Content: input.Content,
 	}
 
 	db := db.Get()
@@ -35,7 +35,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput
 
 	return &Todo{
 		ID:      fmt.Sprintf("%d", todo.ID),
-		Content: todo.Text,
+		Content: todo.Content,
 	}, nil
 }
 
