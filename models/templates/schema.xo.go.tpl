@@ -40,7 +40,7 @@ func ({{ short $e.GoName }} *{{ $e.GoName }}) UnmarshalText(buf []byte) error {
 	return nil
 }
 
-// Value satisfies the [driver.Valuer] interface.
+// Value satisfies the mysql interface.
 func ({{ short $e.GoName }} {{ $e.GoName }}) Value() (driver.Value, error) {
 	return {{ short $e.GoName }}.String(), nil
 }
@@ -204,7 +204,7 @@ func All{{ $i.Table.GoName }}s(ctx context.Context, db DB) ([]*{{ $i.Table.GoNam
 {{- range $p := $ps -}}
 // {{ func_name_context $p }} calls the stored {{ $p.Type }} '{{ $p.Signature }}' on db.
 {{ func_context $p }} {
-{{- if and (driver "mysql") (eq $p.Type "procedure") (not $p.Void) }}
+{{- if and (eq $p.Type "procedure") (not $p.Void) }}
 	// At the moment, the Go MySQL driver does not support stored procedures
 	// with out parameters
 	return {{ zero $p.Returns }}, fmt.Errorf("unsupported")

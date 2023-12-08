@@ -124,12 +124,6 @@ func Init(ctx context.Context, f func(xo.TemplateType)) error {
 				Default:    "uint",
 			},
 			{
-				ContextKey: ArrayModeKey,
-				Type:       "string",
-				Desc:       "array type mode (postgres only)",
-				Enums:      []string{"stdlib", "pq"},
-			},
-			{
 				ContextKey: PkgKey,
 				Type:       "string",
 				Desc:       "package name",
@@ -204,13 +198,6 @@ func Init(ctx context.Context, f func(xo.TemplateType)) error {
 				Type:       "bool",
 				Desc:       "enables legacy v1 template funcs",
 				Default:    "false",
-			},
-			{
-				ContextKey: OracleTypeKey,
-				Type:       "string",
-				Desc:       "oracle driver type",
-				Default:    "ora",
-				Enums:      []string{"ora", "godror"},
 			},
 		},
 		Funcs: func(ctx context.Context, _ string) (template.FuncMap, error) {
@@ -750,29 +737,9 @@ func convertField(ctx context.Context, tf transformFunc, f xo.Field) (Field, err
 }
 
 func goType(ctx context.Context, typ xo.Type) (string, string, error) {
-	driver, _, schema := xo.DriverDbSchema(ctx)
+	_, _, schema := xo.DriverDbSchema(ctx)
 	var f func(xo.Type, string, string, string) (string, string, error)
-	switch driver {
-	case "mysql":
-		f = loader.MysqlGoType
-	case "oracle":
-		f = loader.OracleGoType
-	case "postgres":
-		switch mode := ArrayMode(ctx); mode {
-		case "stdlib":
-			f = loader.StdlibPostgresGoType
-		case "pq", "":
-			f = loader.PQPostgresGoType
-		default:
-			return "", "", fmt.Errorf("unknown array mode: %q", mode)
-		}
-	case "sqlite3":
-		f = loader.Sqlite3GoType
-	case "sqlserver":
-		f = loader.SqlserverGoType
-	default:
-		return "", "", fmt.Errorf("unknown driver %q", driver)
-	}
+	f = loader.MysqlGoType
 	return f(typ, schema, Int32(ctx), Uint32(ctx))
 }
 
@@ -939,12 +906,6 @@ func (f *Funcs) schemafn(names ...string) string {
 		}
 	}
 	n := strings.Join(names, ".")
-	switch {
-	case f.driver == "sqlite3" && n == "":
-		return f.schema
-	case f.driver == "sqlite3":
-		return n
-	}
 	return n
 }
 
@@ -1253,8 +1214,6 @@ func (f *Funcs) db_named(name string, v interface{}) string {
 
 func (f *Funcs) named(name, value string, out bool) string {
 	switch {
-	case out && f.driver == "oracle" && f.oracleType == "ora":
-		return fmt.Sprintf("sql.Out{Dest: %s}", value)
 	case out:
 		return fmt.Sprintf("sql.Named(%q, sql.Out{Dest: %s})", name, value)
 	}
@@ -1481,32 +1440,14 @@ func (f *Funcs) sqlstr_insert_manual(v interface{}) []string {
 func (f *Funcs) sqlstr_insert(v interface{}) []string {
 	switch x := v.(type) {
 	case Table:
-		var seq Field
 		var count int
 		for _, field := range x.Fields {
 			if field.IsSequence {
-				seq = field
 			} else {
 				count++
 			}
 		}
 		lines := f.sqlstr_insert_base(false, v)
-		// add return clause
-		switch f.driver {
-		case "oracle":
-			switch f.oracleType {
-			case "ora":
-				lines[len(lines)-1] += ` RETURNING ` + f.colname(seq) + ` INTO ` + f.nth(count)
-			case "godror":
-				lines[len(lines)-1] += ` RETURNING ` + f.colname(seq) + ` /*LASTINSERTID*/ INTO :pk`
-			default:
-				return []string{fmt.Sprintf("[[ UNSUPPORTED ORACLE TYPE: %s]]", f.oracleType)}
-			}
-		case "postgres":
-			lines[len(lines)-1] += ` RETURNING ` + f.colname(seq)
-		case "sqlserver":
-			lines[len(lines)-1] += "; SELECT ID = CONVERT(BIGINT, SCOPE_IDENTITY())"
-		}
 		return lines
 	}
 	return []string{fmt.Sprintf("[[ UNSUPPORTED TYPE 18: %T ]]", v)}
@@ -1570,34 +1511,9 @@ func (f *Funcs) sqlstr_upsert(v interface{}) []string {
 	case Table:
 		// build insert
 		lines := f.sqlstr_insert_base(true, x)
-		switch f.driver {
-		case "postgres", "sqlite3":
-			return append(lines, f.sqlstr_upsert_postgres_sqlite(x)...)
-		case "mysql":
-			return append(lines, f.sqlstr_upsert_mysql(x)...)
-		case "sqlserver", "oracle":
-			return f.sqlstr_upsert_sqlserver_oracle(x)
-		}
+		return append(lines, f.sqlstr_upsert_mysql(x)...)
 	}
 	return []string{fmt.Sprintf("[[ UNSUPPORTED TYPE 21 %s: %T ]]", f.driver, v)}
-}
-
-// sqlstr_upsert_postgres_sqlite builds an uspert query for postgres and sqlite
-//
-// INSERT (..) VALUES (..) ON CONFLICT DO UPDATE SET ...
-func (f *Funcs) sqlstr_upsert_postgres_sqlite(v interface{}) []string {
-	switch x := v.(type) {
-	case Table:
-		// add conflict and update
-		var conflicts []string
-		for _, f := range x.PrimaryKeys {
-			conflicts = append(conflicts, f.SQLName)
-		}
-		lines := []string{" ON CONFLICT (" + strings.Join(conflicts, ", ") + ") DO "}
-		_, update := f.sqlstr_update_base("EXCLUDED.", v)
-		return append(lines, update...)
-	}
-	return []string{fmt.Sprintf("[[ UNSUPPORTED TYPE 22: %T ]]", v)}
 }
 
 // sqlstr_upsert_mysql builds an uspert query for mysql
@@ -1629,13 +1545,6 @@ func (f *Funcs) sqlstr_upsert_sqlserver_oracle(v interface{}) []string {
 	switch x := v.(type) {
 	case Table:
 		var lines []string
-		// merge [table]...
-		switch f.driver {
-		case "sqlserver":
-			lines = []string{"MERGE " + f.schemafn(x.SQLName) + " AS t "}
-		case "oracle":
-			lines = []string{"MERGE " + f.schemafn(x.SQLName) + "t "}
-		}
 		// using (select ..)
 		var fields, predicate []string
 		for i, field := range x.Fields {
@@ -1646,12 +1555,6 @@ func (f *Funcs) sqlstr_upsert_sqlserver_oracle(v interface{}) []string {
 		}
 		// closing part for select
 		var closing string
-		switch f.driver {
-		case "sqlserver":
-			closing = `) AS s `
-		case "oracle":
-			closing = `FROM DUAL ) s `
-		}
 		lines = append(lines, `USING (`,
 			`SELECT `+strings.Join(fields, ", ")+" ",
 			closing,
@@ -1752,34 +1655,16 @@ func (f *Funcs) sqlstr_proc(v interface{}) []string {
 		if x.Type == "function" {
 			return f.sqlstr_func(v)
 		}
-		// sql string format
 		var format string
-		switch f.driver {
-		case "postgres", "mysql":
-			format = "CALL %s(%s)"
-		case "sqlserver":
-			format = "%[1]s"
-		case "oracle":
-			format = "BEGIN %s(%s); END;"
-		}
 		// build params list; add return fields for orcle
 		l := x.Params
-		if f.driver == "oracle" {
-			l = append(l, x.Returns...)
-		}
 		var list []string
-		for i, field := range l {
+		for i, _ := range l {
 			s := f.nth(i)
-			if f.driver == "oracle" {
-				s = ":" + field.SQLName
-			}
 			list = append(list, s)
 		}
 		// dont prefix with schema for oracle
 		name := f.schemafn(x.SQLName)
-		if f.driver == "oracle" {
-			name = x.SQLName
-		}
 		return []string{
 			fmt.Sprintf(format, name, strings.Join(list, ", ")),
 		}
@@ -1790,17 +1675,7 @@ func (f *Funcs) sqlstr_proc(v interface{}) []string {
 func (f *Funcs) sqlstr_func(v interface{}) []string {
 	switch x := v.(type) {
 	case Proc:
-		var format string
-		switch f.driver {
-		case "postgres":
-			format = "SELECT * FROM %s(%s)"
-		case "mysql":
-			format = "SELECT %s(%s)"
-		case "sqlserver":
-			format = "SELECT %s(%s) AS OUT"
-		case "oracle":
-			format = "SELECT %s(%s) FROM dual"
-		}
+		format := "SELECT %s(%s)"
 		var list []string
 		l := x.Params
 		for i := range l {
