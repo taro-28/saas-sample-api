@@ -1437,6 +1437,8 @@ func (f *Funcs) sqlstr(typ string, v interface{}) string {
 		lines = f.sqlstr_proc(v)
 	case "index":
 		lines = f.sqlstr_index(v)
+	case "all":
+		lines = f.sqlstr_all(v)
 	default:
 		return fmt.Sprintf("const sqlstr = `UNKNOWN QUERY TYPE: %s`", typ)
 	}
@@ -1720,6 +1722,24 @@ func (f *Funcs) sqlstr_index(v interface{}) []string {
 			strings.Join(fields, ", ") + " ",
 			"FROM " + f.schemafn(x.Table.SQLName) + " ",
 			"WHERE " + strings.Join(list, " AND "),
+		}
+	}
+	return []string{fmt.Sprintf("[[ UNSUPPORTED TYPE 26: %T ]]", v)}
+}
+
+// sqlstr_all builds a select * query for the table.
+func (f *Funcs) sqlstr_all(v interface{}) []string {
+	switch x := v.(type) {
+	case Index:
+		// build table fieldnames
+		var fields []string
+		for _, z := range x.Table.Fields {
+			fields = append(fields, f.colname(z))
+		}
+		return []string{
+			"SELECT ",
+			strings.Join(fields, ", ") + " ",
+			"FROM " + f.schemafn(x.Table.SQLName) + " ",
 		}
 	}
 	return []string{fmt.Sprintf("[[ UNSUPPORTED TYPE 26: %T ]]", v)}

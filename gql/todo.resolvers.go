@@ -37,31 +37,20 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput
 func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
 	db := db.Get()
 
-	rows, err := db.Query("select id, content, done from todos;")
+	todos, err := models.AllTodos(ctx, db)
 	if err != nil {
-		log.Fatalf("failed to query: %v", err)
+		log.Fatalf("failed to get all todos: %v", err)
 	}
 
-	todos := []*Todo{}
+	defer db.Close()
 
-	for rows.Next() {
-		var id string
-		var content string
-		var done bool
-		if err := rows.Scan(&id, &content, &done); err != nil {
-			log.Fatalf("failed to scan: %v", err)
-		}
-
-		todos = append(todos, &Todo{
-			ID:      id,
-			Content: content,
-			Done:    done,
+	var gqlTodos []*Todo
+	for _, todo := range todos {
+		gqlTodos = append(gqlTodos, &Todo{
+			ID:      todo.ID,
+			Content: todo.Content,
 		})
 	}
 
-	// TODO このdeferの位置は正しいか？
-	defer rows.Close()
-	defer db.Close()
-
-	return todos, nil
+	return gqlTodos, nil
 }

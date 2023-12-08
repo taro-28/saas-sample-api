@@ -142,3 +142,32 @@ func TodoByID(ctx context.Context, db DB, id string) (*Todo, error) {
 	}
 	return &t, nil
 }
+
+func AllTodos(ctx context.Context, db DB) ([]*Todo, error) {
+	const sqlstr = `SELECT ` +
+		`id, content, done ` +
+		`FROM todos `
+	// run
+	logf(sqlstr)
+	rows, err := db.QueryContext(ctx, sqlstr)
+	if err != nil {
+		return nil, logerror(err)
+	}
+	defer rows.Close()
+	// process
+	var res []*Todo
+	for rows.Next() {
+		t := Todo{
+			_exists: true,
+		}
+		// scan
+		if err := rows.Scan(&t.ID, &t.Content, &t.Done); err != nil {
+			return nil, logerror(err)
+		}
+		res = append(res, &t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, logerror(err)
+	}
+	return res, nil
+}
