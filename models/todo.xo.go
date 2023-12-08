@@ -6,7 +6,7 @@ import (
 	"context"
 )
 
-// Todo represents a row from 'saas-sample.todos'.
+// Todo represents a row from 'todos'.
 type Todo struct {
 	ID      string `json:"id"`      // id
 	Content string `json:"content"` // content
@@ -35,7 +35,7 @@ func (t *Todo) Insert(ctx context.Context, db DB) error {
 		return logerror(&ErrInsertFailed{ErrMarkedForDeletion})
 	}
 	// insert (manual)
-	const sqlstr = `INSERT INTO saas-sample.todos (` +
+	const sqlstr = `INSERT INTO todos (` +
 		`id, content, done` +
 		`) VALUES (` +
 		`?, ?, ?` +
@@ -59,7 +59,7 @@ func (t *Todo) Update(ctx context.Context, db DB) error {
 		return logerror(&ErrUpdateFailed{ErrMarkedForDeletion})
 	}
 	// update with primary key
-	const sqlstr = `UPDATE saas-sample.todos SET ` +
+	const sqlstr = `UPDATE todos SET ` +
 		`content = ?, done = ? ` +
 		`WHERE id = ?`
 	// run
@@ -85,7 +85,7 @@ func (t *Todo) Upsert(ctx context.Context, db DB) error {
 		return logerror(&ErrUpsertFailed{ErrMarkedForDeletion})
 	}
 	// upsert
-	const sqlstr = `INSERT INTO saas-sample.todos (` +
+	const sqlstr = `INSERT INTO todos (` +
 		`id, content, done` +
 		`) VALUES (` +
 		`?, ?, ?` +
@@ -111,7 +111,7 @@ func (t *Todo) Delete(ctx context.Context, db DB) error {
 		return nil
 	}
 	// delete with single primary key
-	const sqlstr = `DELETE FROM saas-sample.todos ` +
+	const sqlstr = `DELETE FROM todos ` +
 		`WHERE id = ?`
 	// run
 	logf(sqlstr, t.ID)
@@ -123,14 +123,14 @@ func (t *Todo) Delete(ctx context.Context, db DB) error {
 	return nil
 }
 
-// TodoByID retrieves a row from 'saas-sample.todos' as a [Todo].
+// TodoByID retrieves a row from 'todos' as a [Todo].
 //
 // Generated from index 'todos_id_pkey'.
 func TodoByID(ctx context.Context, db DB, id string) (*Todo, error) {
 	// query
 	const sqlstr = `SELECT ` +
 		`id, content, done ` +
-		`FROM saas-sample.todos ` +
+		`FROM todos ` +
 		`WHERE id = ?`
 	// run
 	logf(sqlstr, id)
