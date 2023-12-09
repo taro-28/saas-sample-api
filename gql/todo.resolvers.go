@@ -33,6 +33,25 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput
 	}, nil
 }
 
+// DeleteTodo is the resolver for the deleteTodo field.
+func (r *mutationResolver) DeleteTodo(ctx context.Context, id string) (string, error) {
+	db := db.Get()
+
+	todo, err := models.TodoByID(ctx, db, id)
+	if err != nil {
+		log.Fatalf("failed to get todo by id: %v", err)
+	}
+
+	err = todo.Delete(ctx, db)
+	if err != nil {
+		log.Fatalf("failed to delete todo: %v", err)
+	}
+
+	defer db.Close()
+
+	return id, nil
+}
+
 // Todos is the resolver for the todos field.
 func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
 	db := db.Get()
