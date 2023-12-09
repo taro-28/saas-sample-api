@@ -6,6 +6,7 @@ package gql
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/rs/xid"
@@ -30,6 +31,38 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput
 	return &Todo{
 		ID:      todo.ID,
 		Content: todo.Content,
+		Done:    todo.Done,
+	}, nil
+}
+
+// UpdateTodo is the resolver for the updateTodo field.
+func (r *mutationResolver) UpdateTodo(ctx context.Context, input UpdateTodoInput) (*Todo, error) {
+	db := db.Get()
+
+	todo, err := models.TodoByID(ctx, db, input.ID)
+	if err != nil {
+		log.Fatalf("failed to get todo by id: %v", err)
+	}
+
+	if input.Content != nil {
+		todo.Content = *input.Content
+	}
+	if input.Done != nil {
+		todo.Done = *input.Done
+	}
+
+	fmt.Printf("todo: %+v\n", todo)
+
+	if err := todo.Update(ctx, db); err != nil {
+		log.Fatalf("failed to update todo: %v", err)
+	}
+
+	defer db.Close()
+
+	return &Todo{
+		ID:      todo.ID,
+		Content: todo.Content,
+		Done:    todo.Done,
 	}, nil
 }
 
@@ -68,6 +101,7 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
 		gqlTodos = append(gqlTodos, &Todo{
 			ID:      todo.ID,
 			Content: todo.Content,
+			Done:    todo.Done,
 		})
 	}
 

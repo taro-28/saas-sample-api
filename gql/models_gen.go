@@ -11,3 +11,9 @@ type Todo struct {
 	Content string `json:"content"`
 	Done    bool   `json:"done"`
 }
+
+type UpdateTodoInput struct {
+	ID      string  `json:"id"`
+	Content *string `json:"content,omitempty"`
+	Done    *bool   `json:"done,omitempty"`
+}
