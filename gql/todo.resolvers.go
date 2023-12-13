@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/rs/xid"
 	"github.com/taro-28/saas-sample-api/db"
@@ -17,9 +18,10 @@ import (
 // CreateTodo is the resolver for the createTodo field.
 func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput) (*Todo, error) {
 	todo := &models.Todo{
-		ID:      xid.New().String(),
-		Content: input.Content,
-		Done:    false,
+		ID:        xid.New().String(),
+		Content:   input.Content,
+		Done:      false,
+		CreatedAt: uint(time.Now().Unix()),
 	}
 
 	db := db.Get()
@@ -29,9 +31,10 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput
 	defer db.Close()
 
 	return &Todo{
-		ID:      todo.ID,
-		Content: todo.Content,
-		Done:    todo.Done,
+		ID:        todo.ID,
+		Content:   todo.Content,
+		Done:      todo.Done,
+		CreatedAt: int(todo.CreatedAt),
 	}, nil
 }
 
@@ -60,9 +63,10 @@ func (r *mutationResolver) UpdateTodo(ctx context.Context, input UpdateTodoInput
 	defer db.Close()
 
 	return &Todo{
-		ID:      todo.ID,
-		Content: todo.Content,
-		Done:    todo.Done,
+		ID:        todo.ID,
+		Content:   todo.Content,
+		Done:      todo.Done,
+		CreatedAt: int(todo.CreatedAt),
 	}, nil
 }
 
@@ -99,9 +103,10 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
 	var gqlTodos []*Todo
 	for _, todo := range todos {
 		gqlTodos = append(gqlTodos, &Todo{
-			ID:      todo.ID,
-			Content: todo.Content,
-			Done:    todo.Done,
+			ID:        todo.ID,
+			Content:   todo.Content,
+			Done:      todo.Done,
+			CreatedAt: int(todo.CreatedAt),
 		})
 	}
 
