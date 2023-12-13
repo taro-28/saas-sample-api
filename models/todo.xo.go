@@ -4,13 +4,15 @@ package models
 
 import (
 	"context"
+	"database/sql"
 )
 
 // Todo represents a row from 'todos'.
 type Todo struct {
-	ID      string `json:"id"`      // id
-	Content string `json:"content"` // content
-	Done    bool   `json:"done"`    // done
+	ID        string        `json:"id"`         // id
+	Content   string        `json:"content"`    // content
+	Done      bool          `json:"done"`       // done
+	CreatedAt sql.NullInt64 `json:"created_at"` // created_at
 	// xo fields
 	_exists, _deleted bool
 }
@@ -36,13 +38,13 @@ func (t *Todo) Insert(ctx context.Context, db DB) error {
 	}
 	// insert (manual)
 	const sqlstr = `INSERT INTO todos (` +
-		`id, content, done` +
+		`id, content, done, created_at` +
 		`) VALUES (` +
-		`?, ?, ?` +
+		`?, ?, ?, ?` +
 		`)`
 	// run
-	logf(sqlstr, t.ID, t.Content, t.Done)
-	if _, err := db.ExecContext(ctx, sqlstr, t.ID, t.Content, t.Done); err != nil {
+	logf(sqlstr, t.ID, t.Content, t.Done, t.CreatedAt)
+	if _, err := db.ExecContext(ctx, sqlstr, t.ID, t.Content, t.Done, t.CreatedAt); err != nil {
 		return logerror(err)
 	}
 	// set exists
@@ -60,11 +62,11 @@ func (t *Todo) Update(ctx context.Context, db DB) error {
 	}
 	// update with primary key
 	const sqlstr = `UPDATE todos SET ` +
-		`content = ?, done = ? ` +
+		`content = ?, done = ?, created_at = ? ` +
 		`WHERE id = ?`
 	// run
-	logf(sqlstr, t.Content, t.Done, t.ID)
-	if _, err := db.ExecContext(ctx, sqlstr, t.Content, t.Done, t.ID); err != nil {
+	logf(sqlstr, t.Content, t.Done, t.CreatedAt, t.ID)
+	if _, err := db.ExecContext(ctx, sqlstr, t.Content, t.Done, t.CreatedAt, t.ID); err != nil {
 		return logerror(err)
 	}
 	return nil
@@ -86,15 +88,15 @@ func (t *Todo) Upsert(ctx context.Context, db DB) error {
 	}
 	// upsert
 	const sqlstr = `INSERT INTO todos (` +
-		`id, content, done` +
+		`id, content, done, created_at` +
 		`) VALUES (` +
-		`?, ?, ?` +
+		`?, ?, ?, ?` +
 		`)` +
 		` ON DUPLICATE KEY UPDATE ` +
-		`id = VALUES(id), content = VALUES(content), done = VALUES(done)`
+		`id = VALUES(id), content = VALUES(content), done = VALUES(done), created_at = VALUES(created_at)`
 	// run
-	logf(sqlstr, t.ID, t.Content, t.Done)
-	if _, err := db.ExecContext(ctx, sqlstr, t.ID, t.Content, t.Done); err != nil {
+	logf(sqlstr, t.ID, t.Content, t.Done, t.CreatedAt)
+	if _, err := db.ExecContext(ctx, sqlstr, t.ID, t.Content, t.Done, t.CreatedAt); err != nil {
 		return logerror(err)
 	}
 	// set exists
@@ -129,7 +131,7 @@ func (t *Todo) Delete(ctx context.Context, db DB) error {
 func TodoByID(ctx context.Context, db DB, id string) (*Todo, error) {
 	// query
 	const sqlstr = `SELECT ` +
-		`id, content, done ` +
+		`id, content, done, created_at ` +
 		`FROM todos ` +
 		`WHERE id = ?`
 	// run
@@ -137,7 +139,7 @@ func TodoByID(ctx context.Context, db DB, id string) (*Todo, error) {
 	t := Todo{
 		_exists: true,
 	}
-	if err := db.QueryRowContext(ctx, sqlstr, id).Scan(&t.ID, &t.Content, &t.Done); err != nil {
+	if err := db.QueryRowContext(ctx, sqlstr, id).Scan(&t.ID, &t.Content, &t.Done, &t.CreatedAt); err != nil {
 		return nil, logerror(err)
 	}
 	return &t, nil
@@ -145,7 +147,7 @@ func TodoByID(ctx context.Context, db DB, id string) (*Todo, error) {
 
 func AllTodos(ctx context.Context, db DB) ([]*Todo, error) {
 	const sqlstr = `SELECT ` +
-		`id, content, done ` +
+		`id, content, done, created_at ` +
 		`FROM todos `
 	// run
 	logf(sqlstr)
@@ -161,7 +163,7 @@ func AllTodos(ctx context.Context, db DB) ([]*Todo, error) {
 			_exists: true,
 		}
 		// scan
-		if err := rows.Scan(&t.ID, &t.Content, &t.Done); err != nil {
+		if err := rows.Scan(&t.ID, &t.Content, &t.Done, &t.CreatedAt); err != nil {
 			return nil, logerror(err)
 		}
 		res = append(res, &t)
