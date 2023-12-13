@@ -12,6 +12,7 @@ type Todo {
   id: ID!
   content: String!
   done: Boolean!
+  createdAt: Int!
 }
 
 input CreateTodoInput {
