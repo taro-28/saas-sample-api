@@ -4,15 +4,14 @@ package models
 
 import (
 	"context"
-	"database/sql"
 )
 
 // Todo represents a row from 'todos'.
 type Todo struct {
-	ID        string        `json:"id"`         // id
-	Content   string        `json:"content"`    // content
-	Done      bool          `json:"done"`       // done
-	CreatedAt sql.NullInt64 `json:"created_at"` // created_at
+	ID        string `json:"id"`         // id
+	Content   string `json:"content"`    // content
+	Done      bool   `json:"done"`       // done
+	CreatedAt uint   `json:"created_at"` // created_at
 	// xo fields
 	_exists, _deleted bool
 }
