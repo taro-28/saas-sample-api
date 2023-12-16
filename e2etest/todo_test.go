@@ -107,7 +107,7 @@ func TestE2E_Todo(t *testing.T) {
 
 	c.MustPost(`query { todos {id content done}}`, &response)
 
-	if len(response.Todos) == 0 {
+	if len(response.Todos) != 0 {
 		t.Fatalf("expected 0 todo, got %d", len(response.Todos))
 	}
 }
