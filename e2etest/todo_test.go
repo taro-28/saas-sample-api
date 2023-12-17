@@ -3,14 +3,16 @@ package e2etest
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql/handler"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/taro-28/saas-sample-api/db"
 	"github.com/taro-28/saas-sample-api/gql"
+	"github.com/taro-28/saas-sample-api/testdata"
 	"github.com/testcontainers/testcontainers-go/modules/mysql"
 )
 
@@ -54,60 +56,88 @@ func TestE2E_Todo(t *testing.T) {
 	// db/schema.sql を実行する
 	db.Get().Exec(string(sqlFileContent))
 
-	srv := handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{}}))
+	h := handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{}}))
+	s := httptest.NewServer(h)
+	defer s.Close()
 
-	c := client.New(srv)
-
-	c.MustPost(`mutation createTodo($content: String!) {createTodo(input: {content: $content}) {id}}`, &struct {
-		CreateTodo *gql.Todo
-	}{},
-		client.Var("content", "test"),
-	)
-
-	var response struct {
-		Todos []*gql.Todo
-	}
-	c.MustPost(`query { todos {id content done}}`, &response)
-
-	if len(response.Todos) != 1 {
-		t.Fatalf("expected 1 todo, got %d", len(response.Todos))
+	c := testdata.NewClient(http.DefaultClient, s.URL)
+	createRes, err := c.CreateTodo(context.Background(), "test")
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if response.Todos[0].Content != "test" {
-		t.Fatalf("expected todo content to be 'test', got %s", response.Todos[0].Content)
+	if createRes.CreateTodo.ID == "" {
+		t.Fatal("expected todo id to be not empty")
 	}
 
-	if response.Todos[0].Done {
-		t.Fatalf("expected todo to be not done, got %v", response.Todos[0].Done)
+	todosRes, err := c.TodoTest(ctx)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	c.MustPost(`mutation ToggleTodo($id: ID!, $content: String!) { updateTodo (input: {id: $id, content: $content}){id}}`, &struct {
-		UpdateTodo *gql.Todo
-	}{}, client.Var("id", response.Todos[0].ID), client.Var("content", "updated"))
-
-	c.MustPost(`query { todos {id content done}}`, &response)
-
-	if response.Todos[0].Content != "updated" {
-		t.Fatalf("expected todo content to be 'updated', got %s", response.Todos[0].Content)
+	if len(todosRes.Todos) != 1 {
+		t.Fatalf("expected 1 todo, got %d", len(todosRes.Todos))
 	}
 
-	c.MustPost(`mutation ToggleTodo($id: ID!) { updateTodo (input: {id: $id, done: true}){id}}`, &struct {
-		UpdateTodo *gql.Todo
-	}{}, client.Var("id", response.Todos[0].ID))
-
-	c.MustPost(`query { todos {id content done}}`, &response)
-
-	if !response.Todos[0].Done {
-		t.Fatalf("expected todo to be done, got %v", response.Todos[0].Done)
+	if todosRes.Todos[0].Content != "test" {
+		t.Fatalf("expected todo content to be 'test', got %s", todosRes.Todos[0].Content)
 	}
 
-	c.MustPost(`mutation DeleteTodo ($id: ID!) { deleteTodo (id: $id) }`, &struct {
-		DeleteTodo string
-	}{}, client.Var("id", response.Todos[0].ID))
+	if todosRes.Todos[0].Done {
+		t.Fatalf("expected todo to be not done, got %v", todosRes.Todos[0].Done)
+	}
 
-	c.MustPost(`query { todos {id content done}}`, &response)
+	updateContentRes, err := c.UpdateTodoContent(ctx, todosRes.Todos[0].ID, "updated")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	if len(response.Todos) != 0 {
-		t.Fatalf("expected 0 todo, got %d", len(response.Todos))
+	if updateContentRes.UpdateTodo.ID == "" {
+		t.Fatal("expected todo id to be not empty")
+	}
+
+	todosRes, err = c.TodoTest(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if todosRes.Todos[0].Content != "updated" {
+		t.Fatalf("expected todo content to be 'updated', got %s", todosRes.Todos[0].Content)
+	}
+
+	completeRes, err := c.CompleteTodo(ctx, todosRes.Todos[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if completeRes.UpdateTodo.ID == "" {
+		t.Fatal("expected todo id to be not empty")
+	}
+
+	todosRes, err = c.TodoTest(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !todosRes.Todos[0].Done {
+		t.Fatalf("expected todo to be done, got %v", todosRes.Todos[0].Done)
+	}
+
+	deleteRes, err := c.DeleteTodo(ctx, todosRes.Todos[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if deleteRes.DeleteTodo == "" {
+		t.Fatal("expected todo id to be not empty")
+	}
+
+	todosRes, err = c.TodoTest(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(todosRes.Todos) != 0 {
+		t.Fatalf("expected 0 todo, got %d", len(todosRes.Todos))
 	}
 }

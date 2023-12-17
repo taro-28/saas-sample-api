@@ -1,0 +1,29 @@
+mutation CreateTodo($content: String!) {
+  createTodo(input: { content: $content }) {
+    id
+  }
+}
+
+query TodoTest {
+  todos {
+    id
+    content
+    done
+  }
+}
+
+mutation UpdateTodoContent($id: ID!, $content: String!) {
+  updateTodo(input: { id: $id, content: $content }) {
+    id
+  }
+}
+
+mutation CompleteTodo($id: ID!) {
+  updateTodo(input: { id: $id, done: true }) {
+    id
+  }
+}
+
+mutation DeleteTodo($id: ID!) {
+  deleteTodo(id: $id)
+}
