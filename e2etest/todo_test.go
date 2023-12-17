@@ -18,6 +18,7 @@ import (
 )
 
 func setupDB(ctx context.Context, t *testing.T) {
+	t.Helper()
 	mysqlContainer, err := mysql.RunContainer(ctx,
 		mysql.WithDatabase("foo"),
 		mysql.WithUsername("root"),
