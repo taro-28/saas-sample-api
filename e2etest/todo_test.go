@@ -73,25 +73,23 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := &TodoTest{
-		Todos: []*TodoFragment{
-			{
-				ID:        createRes.CreateTodo.ID,
-				Content:   "test",
-				Done:      false,
-				CreatedAt: int(testtime.Now().Unix()),
-			},
-		},
+	wantCreated := &TodoFragment{
+		ID:        createRes.CreateTodo.ID,
+		Content:   "test",
+		Done:      false,
+		CreatedAt: int(testtime.Now().Unix()),
 	}
 
-	if createRes.CreateTodo.ID == "" {
-		t.Fatal("expected todo id to be not empty")
+	if diff := cmp.Diff(wantCreated, &createRes.CreateTodo); diff != "" {
+		t.Fatalf("mismatch (-want +got):\n%s", diff)
 	}
 
 	todosRes, err := gqlClient.TodoTest(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	want := &TodoTest{Todos: []*TodoFragment{wantCreated}}
 
 	if diff := cmp.Diff(want, todosRes); diff != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", diff)
