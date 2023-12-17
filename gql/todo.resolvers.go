@@ -6,7 +6,6 @@ package gql
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -53,8 +52,6 @@ func (r *mutationResolver) UpdateTodo(ctx context.Context, input UpdateTodoInput
 	if input.Done != nil {
 		todo.Done = *input.Done
 	}
-
-	fmt.Printf("todo: %+v\n", todo)
 
 	if err := todo.Update(ctx, db); err != nil {
 		log.Fatalf("failed to update todo: %v", err)
