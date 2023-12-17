@@ -12,7 +12,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/taro-28/saas-sample-api/db"
 	"github.com/taro-28/saas-sample-api/gql"
-	"github.com/taro-28/saas-sample-api/testdata"
 	"github.com/testcontainers/testcontainers-go/modules/mysql"
 )
 
@@ -60,7 +59,7 @@ func TestE2E_Todo(t *testing.T) {
 	s := httptest.NewServer(h)
 	defer s.Close()
 
-	c := testdata.NewClient(http.DefaultClient, s.URL)
+	c := NewClient(http.DefaultClient, s.URL)
 	createRes, err := c.CreateTodo(context.Background(), "test")
 	if err != nil {
 		t.Fatal(err)

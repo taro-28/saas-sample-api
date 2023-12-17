@@ -1,10 +1,16 @@
 include .env
 
+.PHONY: gqlgenc
+
 run:
 	go run main.go
+test:
+	go test -v ./e2etest -count=1
 gqlgen:
 	go get github.com/99designs/gqlgen@latest
 	go run github.com/99designs/gqlgen generate
+gqlgenc:
+	go run e2etest/gqlgenc/main.go
 xogen:
 	xo schema -o models --src models/templates mysql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}?tls=true
 migrate:
