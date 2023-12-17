@@ -79,7 +79,6 @@ func TestE2E_Todo(t *testing.T) {
 		Done:      false,
 		CreatedAt: int(testtime.Now().Unix()),
 	}
-
 	if diff := cmp.Diff(wantCreated, &createRes.CreateTodo); diff != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", diff)
 	}
@@ -89,19 +88,24 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := &TodoTest{Todos: []*TodoFragment{wantCreated}}
-
-	if diff := cmp.Diff(want, todosRes); diff != "" {
+	wantList := &TodoTest{Todos: []*TodoFragment{wantCreated}}
+	if diff := cmp.Diff(wantList, todosRes); diff != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", diff)
 	}
 
-	updateContentRes, err := gqlClient.UpdateTodoContent(ctx, todosRes.Todos[0].ID, "updated")
+	updateContentRes, err := gqlClient.UpdateTodoContent(ctx, wantCreated.ID, "updated")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if updateContentRes.UpdateTodo.ID == "" {
-		t.Fatal("expected todo id to be not empty")
+	wantUpdated := &TodoFragment{
+		ID:        updateContentRes.UpdateTodo.ID,
+		Content:   "updated",
+		Done:      false,
+		CreatedAt: int(testtime.Now().Unix()),
+	}
+	if diff := cmp.Diff(wantUpdated, &updateContentRes.UpdateTodo); diff != "" {
+		t.Fatalf("mismatch (-want +got):\n%s", diff)
 	}
 
 	todosRes, err = gqlClient.TodoTest(ctx)
@@ -109,8 +113,9 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if todosRes.Todos[0].Content != "updated" {
-		t.Fatalf("expected todo content to be 'updated', got %s", todosRes.Todos[0].Content)
+	wantList = &TodoTest{Todos: []*TodoFragment{wantUpdated}}
+	if diff := cmp.Diff(wantList, todosRes); diff != "" {
+		t.Fatalf("mismatch (-want +got):\n%s", diff)
 	}
 
 	completeRes, err := gqlClient.CompleteTodo(ctx, todosRes.Todos[0].ID)
@@ -118,8 +123,14 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if completeRes.UpdateTodo.ID == "" {
-		t.Fatal("expected todo id to be not empty")
+	wantCompleted := &TodoFragment{
+		ID:        completeRes.UpdateTodo.ID,
+		Content:   "updated",
+		Done:      true,
+		CreatedAt: int(testtime.Now().Unix()),
+	}
+	if diff := cmp.Diff(wantCompleted, &completeRes.UpdateTodo); diff != "" {
+		t.Fatalf("mismatch (-want +got):\n%s", diff)
 	}
 
 	todosRes, err = gqlClient.TodoTest(ctx)
@@ -127,8 +138,9 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !todosRes.Todos[0].Done {
-		t.Fatalf("expected todo to be done, got %v", todosRes.Todos[0].Done)
+	wantList = &TodoTest{Todos: []*TodoFragment{wantCompleted}}
+	if diff := cmp.Diff(wantList, todosRes); diff != "" {
+		t.Fatalf("mismatch (-want +got):\n%s", diff)
 	}
 
 	deleteRes, err := gqlClient.DeleteTodo(ctx, todosRes.Todos[0].ID)
@@ -145,7 +157,8 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(todosRes.Todos) != 0 {
-		t.Fatalf("expected 0 todo, got %d", len(todosRes.Todos))
+	wantList = &TodoTest{Todos: []*TodoFragment{}}
+	if diff := cmp.Diff(wantList, todosRes); diff != "" {
+		t.Fatalf("mismatch (-want +got):\n%s", diff)
 	}
 }
