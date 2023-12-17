@@ -60,7 +60,7 @@ func TestE2E_Todo(t *testing.T) {
 	defer s.Close()
 
 	c := NewClient(http.DefaultClient, s.URL)
-	createRes, err := c.CreateTodo(context.Background(), "test")
+	createRes, err := c.CreateTodo(ctx, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
