@@ -15,10 +15,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/mysql"
 )
 
-func TestE2E_Todo(t *testing.T) {
-	// mysqlのテストサーバーを起動する
-	ctx := context.Background()
-
+func setupDB(ctx context.Context, t *testing.T) {
 	mysqlContainer, err := mysql.RunContainer(ctx,
 		mysql.WithDatabase("foo"),
 		mysql.WithUsername("root"),
@@ -33,34 +30,43 @@ func TestE2E_Todo(t *testing.T) {
 		panic(err)
 	}
 
-	// Clean up the container
-	defer func() {
-		if err := mysqlContainer.Terminate(ctx); err != nil {
-			panic(err)
-		}
-	}()
-
-	// 環境変数のDSNをテスト用のものに差し替えて元に戻す
 	originalValue := os.Getenv("DSN")
-	defer func() {
-		os.Setenv("DSN", originalValue)
-	}()
 	os.Setenv("DSN", fmt.Sprintf("root:password@tcp(%s)/foo", ep))
+
+	t.Cleanup(func() {
+		if err := mysqlContainer.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+		os.Setenv("DSN", originalValue)
+	})
 
 	sqlFileContent, err := os.ReadFile("../db/schema.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// db/schema.sql を実行する
 	db.Get().Exec(string(sqlFileContent))
+}
 
+func setupGqlServerAndClient(t *testing.T) *Client {
+	t.Helper()
 	h := handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{}}))
 	s := httptest.NewServer(h)
-	defer s.Close()
 
-	c := NewClient(http.DefaultClient, s.URL)
-	createRes, err := c.CreateTodo(ctx, "test")
+	t.Cleanup(func() {
+		s.Close()
+	})
+
+	return NewClient(http.DefaultClient, s.URL)
+}
+
+func TestE2E_Todo(t *testing.T) {
+	ctx := context.Background()
+
+	setupDB(ctx, t)
+	gqlClient := setupGqlServerAndClient(t)
+
+	createRes, err := gqlClient.CreateTodo(ctx, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +75,7 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatal("expected todo id to be not empty")
 	}
 
-	todosRes, err := c.TodoTest(ctx)
+	todosRes, err := gqlClient.TodoTest(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +92,7 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatalf("expected todo to be not done, got %v", todosRes.Todos[0].Done)
 	}
 
-	updateContentRes, err := c.UpdateTodoContent(ctx, todosRes.Todos[0].ID, "updated")
+	updateContentRes, err := gqlClient.UpdateTodoContent(ctx, todosRes.Todos[0].ID, "updated")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +101,7 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatal("expected todo id to be not empty")
 	}
 
-	todosRes, err = c.TodoTest(ctx)
+	todosRes, err = gqlClient.TodoTest(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +110,7 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatalf("expected todo content to be 'updated', got %s", todosRes.Todos[0].Content)
 	}
 
-	completeRes, err := c.CompleteTodo(ctx, todosRes.Todos[0].ID)
+	completeRes, err := gqlClient.CompleteTodo(ctx, todosRes.Todos[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +119,7 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatal("expected todo id to be not empty")
 	}
 
-	todosRes, err = c.TodoTest(ctx)
+	todosRes, err = gqlClient.TodoTest(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +128,7 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatalf("expected todo to be done, got %v", todosRes.Todos[0].Done)
 	}
 
-	deleteRes, err := c.DeleteTodo(ctx, todosRes.Todos[0].ID)
+	deleteRes, err := gqlClient.DeleteTodo(ctx, todosRes.Todos[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +137,7 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatal("expected todo id to be not empty")
 	}
 
-	todosRes, err = c.TodoTest(ctx)
+	todosRes, err = gqlClient.TodoTest(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
