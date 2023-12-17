@@ -18,7 +18,7 @@ jobs:
         run: go mod download
 
       - name: Run tests
-        run: make test
+        run: go test ./e2etest/... -overlay=`testtime`
   deploy:
     runs-on: ubuntu-latest
 
