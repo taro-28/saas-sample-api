@@ -10,8 +10,10 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/google/go-cmp/cmp"
 	"github.com/taro-28/saas-sample-api/db"
 	"github.com/taro-28/saas-sample-api/gql"
+	"github.com/tenntenn/testtime"
 	"github.com/testcontainers/testcontainers-go/modules/mysql"
 )
 
@@ -71,6 +73,17 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	want := &TodoTest{
+		Todos: []*TodoFragment{
+			{
+				ID:        createRes.CreateTodo.ID,
+				Content:   "test",
+				Done:      false,
+				CreatedAt: int(testtime.Now().Unix()),
+			},
+		},
+	}
+
 	if createRes.CreateTodo.ID == "" {
 		t.Fatal("expected todo id to be not empty")
 	}
@@ -80,16 +93,8 @@ func TestE2E_Todo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(todosRes.Todos) != 1 {
-		t.Fatalf("expected 1 todo, got %d", len(todosRes.Todos))
-	}
-
-	if todosRes.Todos[0].Content != "test" {
-		t.Fatalf("expected todo content to be 'test', got %s", todosRes.Todos[0].Content)
-	}
-
-	if todosRes.Todos[0].Done {
-		t.Fatalf("expected todo to be not done, got %v", todosRes.Todos[0].Done)
+	if diff := cmp.Diff(want, todosRes); diff != "" {
+		t.Fatalf("mismatch (-want +got):\n%s", diff)
 	}
 
 	updateContentRes, err := gqlClient.UpdateTodoContent(ctx, todosRes.Todos[0].ID, "updated")

@@ -5,7 +5,7 @@ include .env
 run:
 	go run main.go
 test:
-	go test -v ./e2etest -count=1
+	go test -v ./e2etest -count=1 -overlay=`testtime`
 gqlgen:
 	go get github.com/99designs/gqlgen@latest
 	go run github.com/99designs/gqlgen generate
