@@ -11,7 +11,6 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/go-cmp/cmp"
-	"github.com/taro-28/saas-sample-api/db"
 	"github.com/taro-28/saas-sample-api/gql"
 	"github.com/tenntenn/testtime"
 	"github.com/testcontainers/testcontainers-go/modules/mysql"
@@ -23,6 +22,7 @@ func setupDB(ctx context.Context, t *testing.T) {
 		mysql.WithDatabase("foo"),
 		mysql.WithUsername("root"),
 		mysql.WithPassword("password"),
+		mysql.WithScripts("../db/schema.sql"),
 	)
 	if err != nil {
 		panic(err)
@@ -42,13 +42,6 @@ func setupDB(ctx context.Context, t *testing.T) {
 		}
 		os.Setenv("DSN", originalValue)
 	})
-
-	sqlFileContent, err := os.ReadFile("../db/schema.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	db.Get().Exec(string(sqlFileContent))
 }
 
 func setupGqlServerAndClient(t *testing.T) *Client {
