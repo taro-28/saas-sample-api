@@ -6,6 +6,8 @@ package gql
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"log"
 	"time"
 
@@ -16,22 +18,44 @@ import (
 
 // CreateTodo is the resolver for the createTodo field.
 func (r *mutationResolver) CreateTodo(ctx context.Context, input gql.CreateTodoInput) (*gql.Todo, error) {
+	categoryID, err := func() (*sql.NullString, error) {
+		if input.CategoryID == nil {
+			return &sql.NullString{
+				String: "",
+				Valid:  false,
+			}, nil
+		}
+		fmt.Printf("input.CategoryID: %v\n", *input.CategoryID)
+		if _, err := models.CategoryByID(ctx, r.DB, *input.CategoryID); err != nil {
+			return nil, err
+		}
+		return &sql.NullString{
+			String: *input.CategoryID,
+			Valid:  true,
+		}, nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
 	todo := &models.Todo{
-		ID:        xid.New().String(),
-		Content:   input.Content,
-		Done:      false,
-		CreatedAt: uint(time.Now().Unix()),
+		ID:         xid.New().String(),
+		Content:    input.Content,
+		CategoryID: *categoryID,
+		Done:       false,
+		CreatedAt:  uint(time.Now().Unix()),
 	}
 
 	if err := todo.Insert(ctx, r.DB); err != nil {
-		log.Fatalf("failed to insert: %v", err)
+		return nil, err
 	}
 
 	return &gql.Todo{
-		ID:        todo.ID,
-		Content:   todo.Content,
-		Done:      todo.Done,
-		CreatedAt: int(todo.CreatedAt),
+		ID:         todo.ID,
+		Content:    todo.Content,
+		Done:       todo.Done,
+		CreatedAt:  int(todo.CreatedAt),
+		CategoryID: todo.CategoryID.String,
 	}, nil
 }
 
@@ -42,12 +66,44 @@ func (r *mutationResolver) UpdateTodo(ctx context.Context, input gql.UpdateTodoI
 		log.Fatalf("failed to get todo by id: %v", err)
 	}
 
-	if input.Content != nil {
-		todo.Content = *input.Content
+	todo.Content = input.Content
+	todo.CategoryID = func() sql.NullString {
+		if input.CategoryID == nil {
+			return sql.NullString{
+				String: "",
+				Valid:  false,
+			}
+		}
+		if _, err := models.CategoryByID(ctx, r.DB, *input.CategoryID); err != nil {
+			log.Fatalf("failed to get category by id: %v", err)
+		}
+		return sql.NullString{
+			String: *input.CategoryID,
+			Valid:  true,
+		}
+	}()
+
+	if err := todo.Update(ctx, r.DB); err != nil {
+		log.Fatalf("failed to update todo: %v", err)
 	}
-	if input.Done != nil {
-		todo.Done = *input.Done
+
+	return &gql.Todo{
+		ID:         todo.ID,
+		Content:    todo.Content,
+		CategoryID: todo.CategoryID.String,
+		Done:       todo.Done,
+		CreatedAt:  int(todo.CreatedAt),
+	}, nil
+}
+
+// UpdateTodoDone is the resolver for the updateTodoDone field.
+func (r *mutationResolver) UpdateTodoDone(ctx context.Context, input gql.UpdateTodoDoneInput) (*gql.Todo, error) {
+	todo, err := models.TodoByID(ctx, r.DB, input.ID)
+	if err != nil {
+		log.Fatalf("failed to get todo by id: %v", err)
 	}
+
+	todo.Done = input.Done
 
 	if err := todo.Update(ctx, r.DB); err != nil {
 		log.Fatalf("failed to update todo: %v", err)
@@ -86,10 +142,11 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*gql.Todo, error) {
 	var gqlTodos []*gql.Todo
 	for _, todo := range todos {
 		gqlTodos = append(gqlTodos, &gql.Todo{
-			ID:        todo.ID,
-			Content:   todo.Content,
-			Done:      todo.Done,
-			CreatedAt: int(todo.CreatedAt),
+			ID:         todo.ID,
+			Content:    todo.Content,
+			Done:       todo.Done,
+			CreatedAt:  int(todo.CreatedAt),
+			CategoryID: todo.CategoryID.String,
 		})
 	}
 
@@ -98,9 +155,12 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*gql.Todo, error) {
 
 // Category is the resolver for the category field.
 func (r *todoResolver) Category(ctx context.Context, obj *gql.Todo) (*gql.Category, error) {
+	if obj.CategoryID == "" {
+		return nil, nil
+	}
 	category, err := models.CategoryByID(ctx, r.DB, obj.CategoryID)
 	if err != nil {
-		log.Fatalf("failed to get category by id: %v", err)
+		return nil, err
 	}
 
 	return &gql.Category{

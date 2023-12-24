@@ -5,6 +5,7 @@ extend type Query {
 extend type Mutation {
   createTodo(input: CreateTodoInput!): Todo!
   updateTodo(input: UpdateTodoInput!): Todo!
+  updateTodoDone(input: UpdateTodoDoneInput!): Todo!
   deleteTodo(id: ID!): ID!
 }
 
@@ -23,7 +24,11 @@ input CreateTodoInput {
 
 input UpdateTodoInput {
   id: ID!
-  content: String
+  content: String!
   categoryId: ID
-  done: Boolean
+}
+
+input UpdateTodoDoneInput {
+  id: ID!
+  done: Boolean!
 }

@@ -28,76 +28,156 @@ type Mutation struct {
 	DeleteCategory string       "json:\"deleteCategory\" graphql:\"deleteCategory\""
 	CreateTodo     gql.Todo     "json:\"createTodo\" graphql:\"createTodo\""
 	UpdateTodo     gql.Todo     "json:\"updateTodo\" graphql:\"updateTodo\""
+	UpdateTodoDone gql.Todo     "json:\"updateTodoDone\" graphql:\"updateTodoDone\""
 	DeleteTodo     string       "json:\"deleteTodo\" graphql:\"deleteTodo\""
 }
-type TodoFragment struct {
+type CategoryFragment struct {
 	ID        string "json:\"id\" graphql:\"id\""
-	Content   string "json:\"content\" graphql:\"content\""
-	Done      bool   "json:\"done\" graphql:\"done\""
+	Name      string "json:\"name\" graphql:\"name\""
 	CreatedAt int    "json:\"createdAt\" graphql:\"createdAt\""
 }
-type CompleteTodo struct {
-	UpdateTodo TodoFragment "json:\"updateTodo\" graphql:\"updateTodo\""
+type TodoFragment struct {
+	ID        string            "json:\"id\" graphql:\"id\""
+	Content   string            "json:\"content\" graphql:\"content\""
+	Done      bool              "json:\"done\" graphql:\"done\""
+	CreatedAt int               "json:\"createdAt\" graphql:\"createdAt\""
+	Category  *CategoryFragment "json:\"category\" graphql:\"category\""
+}
+type Categories struct {
+	Categories []*struct {
+		ID        string "json:\"id\" graphql:\"id\""
+		Name      string "json:\"name\" graphql:\"name\""
+		CreatedAt int    "json:\"createdAt\" graphql:\"createdAt\""
+		Todos     []*struct {
+			ID        string "json:\"id\" graphql:\"id\""
+			Content   string "json:\"content\" graphql:\"content\""
+			Done      bool   "json:\"done\" graphql:\"done\""
+			CreatedAt int    "json:\"createdAt\" graphql:\"createdAt\""
+		} "json:\"todos\" graphql:\"todos\""
+	} "json:\"categories\" graphql:\"categories\""
+}
+type CreateCategory struct {
+	CreateCategory CategoryFragment "json:\"createCategory\" graphql:\"createCategory\""
 }
 type CreateTodo struct {
 	CreateTodo TodoFragment "json:\"createTodo\" graphql:\"createTodo\""
 }
+type DeleteCategory struct {
+	DeleteCategory string "json:\"deleteCategory\" graphql:\"deleteCategory\""
+}
 type DeleteTodo struct {
 	DeleteTodo string "json:\"deleteTodo\" graphql:\"deleteTodo\""
 }
-type TodoTest struct {
+type Todos struct {
 	Todos []*TodoFragment "json:\"todos\" graphql:\"todos\""
 }
-type UpdateTodoContent struct {
+type UpdateCategory struct {
+	UpdateCategory CategoryFragment "json:\"updateCategory\" graphql:\"updateCategory\""
+}
+type UpdateTodo struct {
 	UpdateTodo TodoFragment "json:\"updateTodo\" graphql:\"updateTodo\""
 }
 
-const CompleteTodoDocument = `mutation CompleteTodo ($id: ID!) {
-	updateTodo(input: {id:$id,done:true}) {
-		... TodoFragment
+const CategoriesDocument = `query Categories {
+	categories {
+		... CategoryFragment
+		todos {
+			id
+			content
+			done
+			createdAt
+		}
 	}
 }
-fragment TodoFragment on Todo {
+fragment CategoryFragment on Category {
 	id
-	content
-	done
+	name
 	createdAt
 }
 `
 
-func (c *Client) CompleteTodo(ctx context.Context, id string, httpRequestOptions ...client.HTTPRequestOption) (*CompleteTodo, error) {
-	vars := map[string]interface{}{
-		"id": id,
-	}
+func (c *Client) Categories(ctx context.Context, httpRequestOptions ...client.HTTPRequestOption) (*Categories, error) {
+	vars := map[string]interface{}{}
 
-	var res CompleteTodo
-	if err := c.Client.Post(ctx, "CompleteTodo", CompleteTodoDocument, &res, vars, httpRequestOptions...); err != nil {
+	var res Categories
+	if err := c.Client.Post(ctx, "Categories", CategoriesDocument, &res, vars, httpRequestOptions...); err != nil {
 		return nil, err
 	}
 
 	return &res, nil
 }
 
-const CreateTodoDocument = `mutation CreateTodo ($content: String!) {
-	createTodo(input: {content:$content}) {
+const CreateCategoryDocument = `mutation CreateCategory ($name: String!) {
+	createCategory(input: {name:$name}) {
+		... CategoryFragment
+	}
+}
+fragment CategoryFragment on Category {
+	id
+	name
+	createdAt
+}
+`
+
+func (c *Client) CreateCategory(ctx context.Context, name string, httpRequestOptions ...client.HTTPRequestOption) (*CreateCategory, error) {
+	vars := map[string]interface{}{
+		"name": name,
+	}
+
+	var res CreateCategory
+	if err := c.Client.Post(ctx, "CreateCategory", CreateCategoryDocument, &res, vars, httpRequestOptions...); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
+const CreateTodoDocument = `mutation CreateTodo ($input: CreateTodoInput!) {
+	createTodo(input: $input) {
 		... TodoFragment
 	}
+}
+fragment CategoryFragment on Category {
+	id
+	name
+	createdAt
 }
 fragment TodoFragment on Todo {
 	id
 	content
 	done
 	createdAt
+	category {
+		... CategoryFragment
+	}
 }
 `
 
-func (c *Client) CreateTodo(ctx context.Context, content string, httpRequestOptions ...client.HTTPRequestOption) (*CreateTodo, error) {
+func (c *Client) CreateTodo(ctx context.Context, input gql.CreateTodoInput, httpRequestOptions ...client.HTTPRequestOption) (*CreateTodo, error) {
 	vars := map[string]interface{}{
-		"content": content,
+		"input": input,
 	}
 
 	var res CreateTodo
 	if err := c.Client.Post(ctx, "CreateTodo", CreateTodoDocument, &res, vars, httpRequestOptions...); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
+const DeleteCategoryDocument = `mutation DeleteCategory ($id: ID!) {
+	deleteCategory(id: $id)
+}
+`
+
+func (c *Client) DeleteCategory(ctx context.Context, id string, httpRequestOptions ...client.HTTPRequestOption) (*DeleteCategory, error) {
+	vars := map[string]interface{}{
+		"id": id,
+	}
+
+	var res DeleteCategory
+	if err := c.Client.Post(ctx, "DeleteCategory", DeleteCategoryDocument, &res, vars, httpRequestOptions...); err != nil {
 		return nil, err
 	}
 
@@ -122,51 +202,91 @@ func (c *Client) DeleteTodo(ctx context.Context, id string, httpRequestOptions .
 	return &res, nil
 }
 
-const TodoTestDocument = `query TodoTest {
+const TodosDocument = `query Todos {
 	todos {
 		... TodoFragment
 	}
+}
+fragment CategoryFragment on Category {
+	id
+	name
+	createdAt
 }
 fragment TodoFragment on Todo {
 	id
 	content
 	done
 	createdAt
+	category {
+		... CategoryFragment
+	}
 }
 `
 
-func (c *Client) TodoTest(ctx context.Context, httpRequestOptions ...client.HTTPRequestOption) (*TodoTest, error) {
+func (c *Client) Todos(ctx context.Context, httpRequestOptions ...client.HTTPRequestOption) (*Todos, error) {
 	vars := map[string]interface{}{}
 
-	var res TodoTest
-	if err := c.Client.Post(ctx, "TodoTest", TodoTestDocument, &res, vars, httpRequestOptions...); err != nil {
+	var res Todos
+	if err := c.Client.Post(ctx, "Todos", TodosDocument, &res, vars, httpRequestOptions...); err != nil {
 		return nil, err
 	}
 
 	return &res, nil
 }
 
-const UpdateTodoContentDocument = `mutation UpdateTodoContent ($id: ID!, $content: String!) {
-	updateTodo(input: {id:$id,content:$content}) {
+const UpdateCategoryDocument = `mutation UpdateCategory ($input: UpdateCategoryInput!) {
+	updateCategory(input: $input) {
+		... CategoryFragment
+	}
+}
+fragment CategoryFragment on Category {
+	id
+	name
+	createdAt
+}
+`
+
+func (c *Client) UpdateCategory(ctx context.Context, input gql.UpdateCategoryInput, httpRequestOptions ...client.HTTPRequestOption) (*UpdateCategory, error) {
+	vars := map[string]interface{}{
+		"input": input,
+	}
+
+	var res UpdateCategory
+	if err := c.Client.Post(ctx, "UpdateCategory", UpdateCategoryDocument, &res, vars, httpRequestOptions...); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
+const UpdateTodoDocument = `mutation UpdateTodo ($input: UpdateTodoInput!) {
+	updateTodo(input: $input) {
 		... TodoFragment
 	}
+}
+fragment CategoryFragment on Category {
+	id
+	name
+	createdAt
 }
 fragment TodoFragment on Todo {
 	id
 	content
 	done
 	createdAt
+	category {
+		... CategoryFragment
+	}
 }
 `
 
-func (c *Client) UpdateTodoContent(ctx context.Context, id string, content string, httpRequestOptions ...client.HTTPRequestOption) (*UpdateTodoContent, error) {
+func (c *Client) UpdateTodo(ctx context.Context, input gql.UpdateTodoInput, httpRequestOptions ...client.HTTPRequestOption) (*UpdateTodo, error) {
 	vars := map[string]interface{}{
-		"id":      id,
-		"content": content,
+		"input": input,
 	}
 
-	var res UpdateTodoContent
-	if err := c.Client.Post(ctx, "UpdateTodoContent", UpdateTodoContentDocument, &res, vars, httpRequestOptions...); err != nil {
+	var res UpdateTodo
+	if err := c.Client.Post(ctx, "UpdateTodo", UpdateTodoDocument, &res, vars, httpRequestOptions...); err != nil {
 		return nil, err
 	}
 

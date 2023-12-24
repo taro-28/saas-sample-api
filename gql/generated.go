@@ -63,6 +63,7 @@ type ComplexityRoot struct {
 		DeleteTodo     func(childComplexity int, id string) int
 		UpdateCategory func(childComplexity int, input gql.UpdateCategoryInput) int
 		UpdateTodo     func(childComplexity int, input gql.UpdateTodoInput) int
+		UpdateTodoDone func(childComplexity int, input gql.UpdateTodoDoneInput) int
 	}
 
 	Query struct {
@@ -88,6 +89,7 @@ type MutationResolver interface {
 	DeleteCategory(ctx context.Context, id string) (string, error)
 	CreateTodo(ctx context.Context, input gql.CreateTodoInput) (*gql.Todo, error)
 	UpdateTodo(ctx context.Context, input gql.UpdateTodoInput) (*gql.Todo, error)
+	UpdateTodoDone(ctx context.Context, input gql.UpdateTodoDoneInput) (*gql.Todo, error)
 	DeleteTodo(ctx context.Context, id string) (string, error)
 }
 type QueryResolver interface {
@@ -217,6 +219,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.UpdateTodo(childComplexity, args["input"].(gql.UpdateTodoInput)), true
 
+	case "Mutation.updateTodoDone":
+		if e.complexity.Mutation.UpdateTodoDone == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateTodoDone_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateTodoDone(childComplexity, args["input"].(gql.UpdateTodoDoneInput)), true
+
 	case "Query.categories":
 		if e.complexity.Query.Categories == nil {
 			break
@@ -277,6 +291,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateCategoryInput,
 		ec.unmarshalInputCreateTodoInput,
 		ec.unmarshalInputUpdateCategoryInput,
+		ec.unmarshalInputUpdateTodoDoneInput,
 		ec.unmarshalInputUpdateTodoInput,
 	)
 	first := true
@@ -463,6 +478,21 @@ func (ec *executionContext) field_Mutation_updateCategory_args(ctx context.Conte
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNUpdateCategoryInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐUpdateCategoryInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateTodoDone_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gql.UpdateTodoDoneInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNUpdateTodoDoneInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐUpdateTodoDoneInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1040,6 +1070,73 @@ func (ec *executionContext) fieldContext_Mutation_updateTodo(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateTodo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateTodoDone(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateTodoDone(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateTodoDone(rctx, fc.Args["input"].(gql.UpdateTodoDoneInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gql.Todo)
+	fc.Result = res
+	return ec.marshalNTodo2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐTodo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateTodoDone(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Todo_id(ctx, field)
+			case "content":
+				return ec.fieldContext_Todo_content(ctx, field)
+			case "category":
+				return ec.fieldContext_Todo_category(ctx, field)
+			case "done":
+				return ec.fieldContext_Todo_done(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Todo_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Todo", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateTodoDone_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -3435,6 +3532,40 @@ func (ec *executionContext) unmarshalInputUpdateCategoryInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateTodoDoneInput(ctx context.Context, obj interface{}) (gql.UpdateTodoDoneInput, error) {
+	var it gql.UpdateTodoDoneInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "done"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "done":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("done"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Done = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateTodoInput(ctx context.Context, obj interface{}) (gql.UpdateTodoInput, error) {
 	var it gql.UpdateTodoInput
 	asMap := map[string]interface{}{}
@@ -3442,7 +3573,7 @@ func (ec *executionContext) unmarshalInputUpdateTodoInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "content", "categoryId", "done"}
+	fieldsInOrder := [...]string{"id", "content", "categoryId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -3458,7 +3589,7 @@ func (ec *executionContext) unmarshalInputUpdateTodoInput(ctx context.Context, o
 			it.ID = data
 		case "content":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("content"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -3470,13 +3601,6 @@ func (ec *executionContext) unmarshalInputUpdateTodoInput(ctx context.Context, o
 				return it, err
 			}
 			it.CategoryID = data
-		case "done":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("done"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Done = data
 		}
 	}
 
@@ -3626,6 +3750,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateTodo":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateTodo(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateTodoDone":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateTodoDone(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -4355,6 +4486,11 @@ func (ec *executionContext) marshalNTodo2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsa
 
 func (ec *executionContext) unmarshalNUpdateCategoryInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐUpdateCategoryInput(ctx context.Context, v interface{}) (gql.UpdateCategoryInput, error) {
 	res, err := ec.unmarshalInputUpdateCategoryInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateTodoDoneInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐUpdateTodoDoneInput(ctx context.Context, v interface{}) (gql.UpdateTodoDoneInput, error) {
+	res, err := ec.unmarshalInputUpdateTodoDoneInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

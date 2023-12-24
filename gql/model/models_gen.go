@@ -16,9 +16,13 @@ type UpdateCategoryInput struct {
 	Name string `json:"name"`
 }
 
+type UpdateTodoDoneInput struct {
+	ID   string `json:"id"`
+	Done bool   `json:"done"`
+}
+
 type UpdateTodoInput struct {
 	ID         string  `json:"id"`
-	Content    *string `json:"content,omitempty"`
+	Content    string  `json:"content"`
 	CategoryID *string `json:"categoryId,omitempty"`
-	Done       *bool   `json:"done,omitempty"`
 }

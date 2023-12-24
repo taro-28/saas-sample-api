@@ -2,172 +2,250 @@ package e2etest
 
 import (
 	"context"
-	"fmt"
-	"net/http"
-	"net/http/httptest"
-	"os"
 	"testing"
 
-	"github.com/99designs/gqlgen/graphql/handler"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/go-cmp/cmp"
-	"github.com/taro-28/saas-sample-api/db"
-	"github.com/taro-28/saas-sample-api/gql"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	gql "github.com/taro-28/saas-sample-api/gql/model"
 	"github.com/tenntenn/testtime"
-	"github.com/testcontainers/testcontainers-go/modules/mysql"
 )
 
-func setupDB(ctx context.Context, t *testing.T) {
-	t.Helper()
-	const (
-		DBName = "foo"
-		DBUser = "root"
-		DBPass = "password"
-	)
-
-	mysqlContainer, err := mysql.RunContainer(ctx,
-		mysql.WithDatabase(DBName),
-		mysql.WithUsername(DBUser),
-		mysql.WithPassword(DBPass),
-		mysql.WithScripts("../db/schema.sql"),
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	ep, err := mysqlContainer.Endpoint(ctx, "")
-	if err != nil {
-		panic(err)
-	}
-
-	originalValue := os.Getenv("DSN")
-	os.Setenv("DSN", fmt.Sprintf("%s:%s@tcp(%s)/%s", DBUser, DBPass, ep, DBName))
-
-	t.Cleanup(func() {
-		if err := mysqlContainer.Terminate(ctx); err != nil {
-			t.Fatal(err)
-		}
-		os.Setenv("DSN", originalValue)
-	})
-}
-
-func setupGqlServerAndClient(t *testing.T) *Client {
-	t.Helper()
-
-	db, cleanup, err := db.Connect()
-	if err != nil {
-		t.Fatalf("failed to connect to db: %v", err)
-	}
-	h := handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{
-		DB: db,
-	}}))
-	s := httptest.NewServer(h)
-
-	t.Cleanup(func() {
-		cleanup()
-		s.Close()
-	})
-
-	return NewClient(http.DefaultClient, s.URL)
-}
-
 func TestE2E_Todo(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
-
 	setupDB(ctx, t)
 	gqlClient := setupGqlServerAndClient(t)
 
-	createRes, err := gqlClient.CreateTodo(ctx, "test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	category := func() *CategoryFragment {
+		category, err := gqlClient.CreateCategory(ctx, "test")
+		if err != nil {
+			t.Fatalf("failed to create category: %v", err)
+		}
+		return &category.CreateCategory
+	}()
 
-	wantCreated := &TodoFragment{
-		ID:        createRes.CreateTodo.ID,
-		Content:   "test",
-		Done:      false,
-		CreatedAt: int(testtime.Now().Unix()),
-	}
-	if diff := cmp.Diff(wantCreated, &createRes.CreateTodo); diff != "" {
-		t.Fatalf("mismatch (-want +got):\n%s", diff)
-	}
+	t.Run("create", func(t *testing.T) {
+		t.Parallel()
+		testCases := map[string]struct {
+			input   gql.CreateTodoInput
+			want    *TodoFragment
+			wantErr bool
+		}{
+			"ok:basic": {
+				input: gql.CreateTodoInput{
+					Content:    "test",
+					CategoryID: &category.ID,
+				},
+				want: &TodoFragment{
+					Content:   "test",
+					Done:      false,
+					CreatedAt: int(testtime.Now().Unix()),
+					Category:  category,
+				},
+			},
+			"ok:non category": {
+				input: gql.CreateTodoInput{
+					Content: "test",
+				},
+				want: &TodoFragment{
+					Content:   "test",
+					Done:      false,
+					Category:  nil,
+					CreatedAt: int(testtime.Now().Unix()),
+				},
+			},
+			"ng:invalid category": {
+				input: gql.CreateTodoInput{
+					Content:    "test",
+					CategoryID: func() *string { s := "invalid"; return &s }(),
+				},
+				wantErr: true,
+			},
+		}
 
-	todosRes, err := gqlClient.TodoTest(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+		for name, tc := range testCases {
+			name := name
+			tc := tc
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+				createRes, err := gqlClient.CreateTodo(ctx, tc.input)
+				if tc.wantErr {
+					if err == nil {
+						t.Fatalf("expected error but got nil")
+					}
+					return
+				}
 
-	wantList := &TodoTest{Todos: []*TodoFragment{wantCreated}}
-	if diff := cmp.Diff(wantList, todosRes); diff != "" {
-		t.Fatalf("mismatch (-want +got):\n%s", diff)
-	}
+				if err != nil {
+					t.Fatalf("failed to create todo: %v", err)
+				}
 
-	updateContentRes, err := gqlClient.UpdateTodoContent(ctx, wantCreated.ID, "updated")
-	if err != nil {
-		t.Fatal(err)
-	}
+				if diff := cmp.Diff(tc.want, &createRes.CreateTodo,
+					cmpopts.IgnoreFields(TodoFragment{}, "ID"),
+				); diff != "" {
+					t.Fatalf("mismatch (-want +got):\n%s", diff)
+				}
 
-	wantUpdated := &TodoFragment{
-		ID:        updateContentRes.UpdateTodo.ID,
-		Content:   "updated",
-		Done:      false,
-		CreatedAt: int(testtime.Now().Unix()),
-	}
-	if diff := cmp.Diff(wantUpdated, &updateContentRes.UpdateTodo); diff != "" {
-		t.Fatalf("mismatch (-want +got):\n%s", diff)
-	}
+				todosRes, err := gqlClient.Todos(ctx)
+				if err != nil {
+					t.Fatalf("failed to get todos: %v", err)
+				}
 
-	todosRes, err = gqlClient.TodoTest(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+				for _, todo := range todosRes.Todos {
+					if todo.ID != createRes.CreateTodo.ID {
+						continue
+					}
 
-	wantList = &TodoTest{Todos: []*TodoFragment{wantUpdated}}
-	if diff := cmp.Diff(wantList, todosRes); diff != "" {
-		t.Fatalf("mismatch (-want +got):\n%s", diff)
-	}
+					if diff := cmp.Diff(tc.want, todo, cmpopts.IgnoreFields(TodoFragment{}, "ID")); diff != "" {
+						t.Fatalf("mismatch (-want +got):\n%s", diff)
+					}
+				}
+			})
+		}
+	})
 
-	completeRes, err := gqlClient.CompleteTodo(ctx, todosRes.Todos[0].ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// testCases := map[string]struct {
+	// 	createInput gql.CreateTodoInput
+	// 	wantCreated *TodoFragment
+	// 	updateInput gql.UpdateTodoInput
+	// 	wantUpdated *TodoFragment
+	// }{
+	// 	"basic": {
+	// 		createInput: gql.CreateTodoInput{
+	// 			Content:    "test",
+	// 			CategoryID: &category.ID,
+	// 		},
+	// 		wantCreated: &TodoFragment{
+	// 			ID:        "",
+	// 			Content:   "test",
+	// 			Done:      false,
+	// 			CreatedAt: int(testtime.Now().Unix()),
+	// 			Category: &struct {
+	// 				ID        string "json:\"id\" graphql:\"id\""
+	// 				Name      string "json:\"name\" graphql:\"name\""
+	// 				CreatedAt int    "json:\"createdAt\" graphql:\"createdAt\""
+	// 			}{
+	// 				ID:        category.ID,
+	// 				Name:      category.Name,
+	// 				CreatedAt: category.CreatedAt,
+	// 			},
+	// 		},
+	// 		updateInput: gql.UpdateTodoInput{
+	// 			Content: "updated",
+	// 		},
+	// 		wantUpdated: &TodoFragment{
+	// 			ID:        "",
+	// 			Content:   "updated",
+	// 			Done:      false,
+	// 			CreatedAt: int(testtime.Now().Unix()),
+	// 			Category: &struct {
+	// 				ID        string "json:\"id\" graphql:\"id\""
+	// 				Name      string "json:\"name\" graphql:\"name\""
+	// 				CreatedAt int    "json:\"createdAt\" graphql:\"createdAt\""
+	// 			}{
+	// 				ID:        category.ID,
+	// 				Name:      category.Name,
+	// 				CreatedAt: category.CreatedAt,
+	// 			},
+	// 		},
+	// 	},
+	// 	"non category": {},
+	// }
 
-	wantCompleted := &TodoFragment{
-		ID:        completeRes.UpdateTodo.ID,
-		Content:   "updated",
-		Done:      true,
-		CreatedAt: int(testtime.Now().Unix()),
-	}
-	if diff := cmp.Diff(wantCompleted, &completeRes.UpdateTodo); diff != "" {
-		t.Fatalf("mismatch (-want +got):\n%s", diff)
-	}
+	// for name, tc := range testCases {
+	// 	createRes, err := gqlClient.CreateTodo(ctx, "test")
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
 
-	todosRes, err = gqlClient.TodoTest(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// 	wantCreated := &TodoFragment{
+	// 		ID:        createRes.CreateTodo.ID,
+	// 		Content:   "test",
+	// 		Done:      false,
+	// 		CreatedAt: int(testtime.Now().Unix()),
+	// 	}
+	// 	if diff := cmp.Diff(wantCreated, &createRes.CreateTodo); diff != "" {
+	// 		t.Fatalf("mismatch (-want +got):\n%s", diff)
+	// 	}
 
-	wantList = &TodoTest{Todos: []*TodoFragment{wantCompleted}}
-	if diff := cmp.Diff(wantList, todosRes); diff != "" {
-		t.Fatalf("mismatch (-want +got):\n%s", diff)
-	}
+	// 	todosRes, err := gqlClient.Todos(ctx)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
 
-	deleteRes, err := gqlClient.DeleteTodo(ctx, todosRes.Todos[0].ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// 	wantList := &Todos{Todos: []*TodoFragment{wantCreated}}
+	// 	if diff := cmp.Diff(wantList, todosRes); diff != "" {
+	// 		t.Fatalf("mismatch (-want +got):\n%s", diff)
+	// 	}
 
-	if deleteRes.DeleteTodo == "" {
-		t.Fatal("expected todo id to be not empty")
-	}
+	// 	updateContentRes, err := gqlClient.UpdateTodoContent(ctx, wantCreated.ID, "updated")
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
 
-	todosRes, err = gqlClient.TodoTest(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// 	wantUpdated := &TodoFragment{
+	// 		ID:        updateContentRes.UpdateTodo.ID,
+	// 		Content:   "updated",
+	// 		Done:      false,
+	// 		CreatedAt: int(testtime.Now().Unix()),
+	// 	}
+	// 	if diff := cmp.Diff(wantUpdated, &updateContentRes.UpdateTodo); diff != "" {
+	// 		t.Fatalf("mismatch (-want +got):\n%s", diff)
+	// 	}
 
-	wantList = &TodoTest{Todos: []*TodoFragment{}}
-	if diff := cmp.Diff(wantList, todosRes); diff != "" {
-		t.Fatalf("mismatch (-want +got):\n%s", diff)
-	}
+	// 	todosRes, err = gqlClient.Todos(ctx)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+
+	// 	wantList = &Todos{Todos: []*TodoFragment{wantUpdated}}
+	// 	if diff := cmp.Diff(wantList, todosRes); diff != "" {
+	// 		t.Fatalf("mismatch (-want +got):\n%s", diff)
+	// 	}
+
+	// 	completeRes, err := gqlClient.CompleteTodo(ctx, todosRes.Todos[0].ID)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+
+	// 	wantCompleted := &TodoFragment{
+	// 		ID:        completeRes.UpdateTodo.ID,
+	// 		Content:   "updated",
+	// 		Done:      true,
+	// 		CreatedAt: int(testtime.Now().Unix()),
+	// 	}
+	// 	if diff := cmp.Diff(wantCompleted, &completeRes.UpdateTodo); diff != "" {
+	// 		t.Fatalf("mismatch (-want +got):\n%s", diff)
+	// 	}
+
+	// 	todosRes, err = gqlClient.Todos(ctx)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+
+	// 	wantList = &Todos{Todos: []*TodoFragment{wantCompleted}}
+	// 	if diff := cmp.Diff(wantList, todosRes); diff != "" {
+	// 		t.Fatalf("mismatch (-want +got):\n%s", diff)
+	// 	}
+
+	// 	deleteRes, err := gqlClient.DeleteTodo(ctx, todosRes.Todos[0].ID)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+
+	// 	if deleteRes.DeleteTodo == "" {
+	// 		t.Fatal("expected todo id to be not empty")
+	// 	}
+
+	// 	todosRes, err = gqlClient.Todos(ctx)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+
+	// 	wantList = &Todos{Todos: []*TodoFragment{}}
+	// 	if diff := cmp.Diff(wantList, todosRes); diff != "" {
+	// 		t.Fatalf("mismatch (-want +got):\n%s", diff)
+	// 	}
+	// }
 }

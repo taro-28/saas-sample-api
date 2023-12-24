@@ -50,8 +50,9 @@ func (r *mutationResolver) CreateCategory(ctx context.Context, input gql.CreateC
 	}
 
 	return &gql.Category{
-		ID:   category.ID,
-		Name: category.Name,
+		ID:        category.ID,
+		Name:      category.Name,
+		CreatedAt: int(category.CreatedAt),
 	}, nil
 }
 

@@ -1,23 +1,17 @@
-mutation CreateTodo($content: String!) {
-  createTodo(input: { content: $content }) {
-    ...TodoFragment
-  }
-}
-
-query TodoTest {
+query Todos {
   todos {
     ...TodoFragment
   }
 }
 
-mutation UpdateTodoContent($id: ID!, $content: String!) {
-  updateTodo(input: { id: $id, content: $content }) {
+mutation CreateTodo($input: CreateTodoInput!) {
+  createTodo(input: $input) {
     ...TodoFragment
   }
 }
 
-mutation CompleteTodo($id: ID!) {
-  updateTodo(input: { id: $id, done: true }) {
+mutation UpdateTodo($input: UpdateTodoInput!) {
+  updateTodo(input: $input) {
     ...TodoFragment
   }
 }
@@ -31,4 +25,7 @@ fragment TodoFragment on Todo {
   content
   done
   createdAt
+  category {
+    ...CategoryFragment
+  }
 }

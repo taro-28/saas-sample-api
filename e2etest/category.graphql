@@ -1,0 +1,33 @@
+query Categories {
+  categories {
+    ...CategoryFragment
+    todos {
+      id
+      content
+      done
+      createdAt
+    }
+  }
+}
+
+mutation CreateCategory($name: String!) {
+  createCategory(input: { name: $name }) {
+    ...CategoryFragment
+  }
+}
+
+mutation UpdateCategory($input: UpdateCategoryInput!) {
+  updateCategory(input: $input) {
+    ...CategoryFragment
+  }
+}
+
+mutation DeleteCategory($id: ID!) {
+  deleteCategory(id: $id)
+}
+
+fragment CategoryFragment on Category {
+  id
+  name
+  createdAt
+}
