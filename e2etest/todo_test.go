@@ -11,6 +11,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/go-cmp/cmp"
+	"github.com/taro-28/saas-sample-api/db"
 	"github.com/taro-28/saas-sample-api/gql"
 	"github.com/tenntenn/testtime"
 	"github.com/testcontainers/testcontainers-go/modules/mysql"
@@ -52,10 +53,18 @@ func setupDB(ctx context.Context, t *testing.T) {
 
 func setupGqlServerAndClient(t *testing.T) *Client {
 	t.Helper()
-	h := handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{}}))
+
+	db, cleanup, err := db.Connect()
+	if err != nil {
+		t.Fatalf("failed to connect to db: %v", err)
+	}
+	h := handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{
+		DB: db,
+	}}))
 	s := httptest.NewServer(h)
 
 	t.Cleanup(func() {
+		cleanup()
 		s.Close()
 	})
 

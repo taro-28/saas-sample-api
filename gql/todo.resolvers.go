@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/rs/xid"
-	"github.com/taro-28/saas-sample-api/db"
 	gql "github.com/taro-28/saas-sample-api/gql/model"
 	"github.com/taro-28/saas-sample-api/models"
 )
@@ -25,11 +24,9 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input gql.CreateTodoI
 		CreatedAt: uint(time.Now().Unix()),
 	}
 
-	db := db.Get()
-	if err := todo.Insert(ctx, db); err != nil {
+	if err := todo.Insert(ctx, r.DB); err != nil {
 		log.Fatalf("failed to insert: %v", err)
 	}
-	defer db.Close()
 
 	return &gql.Todo{
 		ID:        todo.ID,
@@ -41,9 +38,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input gql.CreateTodoI
 
 // UpdateTodo is the resolver for the updateTodo field.
 func (r *mutationResolver) UpdateTodo(ctx context.Context, input gql.UpdateTodoInput) (*gql.Todo, error) {
-	db := db.Get()
-
-	todo, err := models.TodoByID(ctx, db, input.ID)
+	todo, err := models.TodoByID(ctx, r.DB, input.ID)
 	if err != nil {
 		log.Fatalf("failed to get todo by id: %v", err)
 	}
@@ -55,11 +50,9 @@ func (r *mutationResolver) UpdateTodo(ctx context.Context, input gql.UpdateTodoI
 		todo.Done = *input.Done
 	}
 
-	if err := todo.Update(ctx, db); err != nil {
+	if err := todo.Update(ctx, r.DB); err != nil {
 		log.Fatalf("failed to update todo: %v", err)
 	}
-
-	defer db.Close()
 
 	return &gql.Todo{
 		ID:        todo.ID,
@@ -71,33 +64,25 @@ func (r *mutationResolver) UpdateTodo(ctx context.Context, input gql.UpdateTodoI
 
 // DeleteTodo is the resolver for the deleteTodo field.
 func (r *mutationResolver) DeleteTodo(ctx context.Context, id string) (string, error) {
-	db := db.Get()
-
-	todo, err := models.TodoByID(ctx, db, id)
+	todo, err := models.TodoByID(ctx, r.DB, id)
 	if err != nil {
 		log.Fatalf("failed to get todo by id: %v", err)
 	}
 
-	err = todo.Delete(ctx, db)
+	err = todo.Delete(ctx, r.DB)
 	if err != nil {
 		log.Fatalf("failed to delete todo: %v", err)
 	}
-
-	defer db.Close()
 
 	return id, nil
 }
 
 // Todos is the resolver for the todos field.
 func (r *queryResolver) Todos(ctx context.Context) ([]*gql.Todo, error) {
-	db := db.Get()
-
-	todos, err := models.AllTodos(ctx, db)
+	todos, err := models.AllTodos(ctx, r.DB)
 	if err != nil {
 		log.Fatalf("failed to get all todos: %v", err)
 	}
-
-	defer db.Close()
 
 	var gqlTodos []*gql.Todo
 	for _, todo := range todos {

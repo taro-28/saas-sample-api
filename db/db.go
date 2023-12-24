@@ -2,14 +2,15 @@ package db
 
 import (
 	"database/sql"
-	"log"
 	"os"
 )
 
-func Get() *sql.DB {
+func Connect() (*sql.DB, func(), error) {
 	db, err := sql.Open("mysql", os.Getenv("DSN"))
 	if err != nil {
-		log.Fatalf("failed to connect: %v", err)
+		return nil, nil, err
 	}
-	return db
+	return db, func() {
+		db.Close()
+	}, nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
+	"github.com/taro-28/saas-sample-api/db"
 	"github.com/taro-28/saas-sample-api/gql"
 )
 
@@ -23,7 +24,14 @@ func main() {
 		port = defaultPort
 	}
 
-	srv := handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{}}))
+	db, cleanup, err := db.Connect()
+	if err != nil {
+		log.Fatalf("failed to connect to db: %v", err)
+	}
+	defer cleanup()
+	srv := handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{
+		DB: db,
+	}}))
 
 	http.Handle("/", playground.Handler("SaaS Sample API", "/query"))
 	http.Handle("/query", srv)
