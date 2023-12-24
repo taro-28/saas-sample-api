@@ -6,7 +6,6 @@ package gql
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -99,7 +98,16 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*gql.Todo, error) {
 
 // Category is the resolver for the category field.
 func (r *todoResolver) Category(ctx context.Context, obj *gql.Todo) (*gql.Category, error) {
-	panic(fmt.Errorf("not implemented: Category - category"))
+	category, err := models.CategoryByID(ctx, r.DB, obj.CategoryID)
+	if err != nil {
+		log.Fatalf("failed to get category by id: %v", err)
+	}
+
+	return &gql.Category{
+		ID:        category.ID,
+		Name:      category.Name,
+		CreatedAt: int(category.CreatedAt),
+	}, nil
 }
 
 // Todo returns TodoResolver implementation.
