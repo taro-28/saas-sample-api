@@ -6,6 +6,7 @@ package gql
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -86,6 +87,21 @@ func (r *mutationResolver) DeleteTodo(ctx context.Context, id string) (string, e
 	return id, nil
 }
 
+// CreateCategory is the resolver for the createCategory field.
+func (r *mutationResolver) CreateCategory(ctx context.Context, input CreateCategoryInput) (*Category, error) {
+	panic(fmt.Errorf("not implemented: CreateCategory - createCategory"))
+}
+
+// UpdateCategory is the resolver for the updateCategory field.
+func (r *mutationResolver) UpdateCategory(ctx context.Context, input UpdateCategoryInput) (*Category, error) {
+	panic(fmt.Errorf("not implemented: UpdateCategory - updateCategory"))
+}
+
+// DeleteCategory is the resolver for the deleteCategory field.
+func (r *mutationResolver) DeleteCategory(ctx context.Context, id string) (string, error) {
+	panic(fmt.Errorf("not implemented: DeleteCategory - deleteCategory"))
+}
+
 // Todos is the resolver for the todos field.
 func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
 	db := db.Get()
@@ -108,4 +124,9 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
 	}
 
 	return gqlTodos, nil
+}
+
+// Categories is the resolver for the categories field.
+func (r *queryResolver) Categories(ctx context.Context) ([]*Category, error) {
+	panic(fmt.Errorf("not implemented: Categories - categories"))
 }
