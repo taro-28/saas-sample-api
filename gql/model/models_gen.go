@@ -2,12 +2,6 @@
 
 package gql
 
-type Category struct {
-	ID    string  `json:"id"`
-	Name  string  `json:"name"`
-	Todos []*Todo `json:"todos"`
-}
-
 type CreateCategoryInput struct {
 	Name string `json:"name"`
 }
@@ -15,14 +9,6 @@ type CreateCategoryInput struct {
 type CreateTodoInput struct {
 	Content    string  `json:"content"`
 	CategoryID *string `json:"categoryId,omitempty"`
-}
-
-type Todo struct {
-	ID        string    `json:"id"`
-	Content   string    `json:"content"`
-	Category  *Category `json:"category,omitempty"`
-	Done      bool      `json:"done"`
-	CreatedAt int       `json:"createdAt"`
 }
 
 type UpdateCategoryInput struct {

@@ -1,16 +1,11 @@
 extend type Query {
   todos: [Todo!]!
-  categories: [Category!]!
 }
 
 extend type Mutation {
   createTodo(input: CreateTodoInput!): Todo!
   updateTodo(input: UpdateTodoInput!): Todo!
   deleteTodo(id: ID!): ID!
-
-  createCategory(input: CreateCategoryInput!): Category!
-  updateCategory(input: UpdateCategoryInput!): Category!
-  deleteCategory(id: ID!): ID!
 }
 
 type Todo {
@@ -19,12 +14,6 @@ type Todo {
   category: Category
   done: Boolean!
   createdAt: Int!
-}
-
-type Category {
-  id: ID!
-  name: String!
-  todos: [Todo!]!
 }
 
 input CreateTodoInput {
@@ -37,13 +26,4 @@ input UpdateTodoInput {
   content: String
   categoryId: ID
   done: Boolean
-}
-
-input CreateCategoryInput {
-  name: String!
-}
-
-input UpdateCategoryInput {
-  id: ID!
-  name: String!
 }

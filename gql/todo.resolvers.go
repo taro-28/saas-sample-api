@@ -12,11 +12,12 @@ import (
 
 	"github.com/rs/xid"
 	"github.com/taro-28/saas-sample-api/db"
+	gql "github.com/taro-28/saas-sample-api/gql/model"
 	"github.com/taro-28/saas-sample-api/models"
 )
 
 // CreateTodo is the resolver for the createTodo field.
-func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput) (*Todo, error) {
+func (r *mutationResolver) CreateTodo(ctx context.Context, input gql.CreateTodoInput) (*gql.Todo, error) {
 	todo := &models.Todo{
 		ID:        xid.New().String(),
 		Content:   input.Content,
@@ -30,7 +31,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput
 	}
 	defer db.Close()
 
-	return &Todo{
+	return &gql.Todo{
 		ID:        todo.ID,
 		Content:   todo.Content,
 		Done:      todo.Done,
@@ -39,7 +40,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input CreateTodoInput
 }
 
 // UpdateTodo is the resolver for the updateTodo field.
-func (r *mutationResolver) UpdateTodo(ctx context.Context, input UpdateTodoInput) (*Todo, error) {
+func (r *mutationResolver) UpdateTodo(ctx context.Context, input gql.UpdateTodoInput) (*gql.Todo, error) {
 	db := db.Get()
 
 	todo, err := models.TodoByID(ctx, db, input.ID)
@@ -60,7 +61,7 @@ func (r *mutationResolver) UpdateTodo(ctx context.Context, input UpdateTodoInput
 
 	defer db.Close()
 
-	return &Todo{
+	return &gql.Todo{
 		ID:        todo.ID,
 		Content:   todo.Content,
 		Done:      todo.Done,
@@ -87,23 +88,8 @@ func (r *mutationResolver) DeleteTodo(ctx context.Context, id string) (string, e
 	return id, nil
 }
 
-// CreateCategory is the resolver for the createCategory field.
-func (r *mutationResolver) CreateCategory(ctx context.Context, input CreateCategoryInput) (*Category, error) {
-	panic(fmt.Errorf("not implemented: CreateCategory - createCategory"))
-}
-
-// UpdateCategory is the resolver for the updateCategory field.
-func (r *mutationResolver) UpdateCategory(ctx context.Context, input UpdateCategoryInput) (*Category, error) {
-	panic(fmt.Errorf("not implemented: UpdateCategory - updateCategory"))
-}
-
-// DeleteCategory is the resolver for the deleteCategory field.
-func (r *mutationResolver) DeleteCategory(ctx context.Context, id string) (string, error) {
-	panic(fmt.Errorf("not implemented: DeleteCategory - deleteCategory"))
-}
-
 // Todos is the resolver for the todos field.
-func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
+func (r *queryResolver) Todos(ctx context.Context) ([]*gql.Todo, error) {
 	db := db.Get()
 
 	todos, err := models.AllTodos(ctx, db)
@@ -113,9 +99,9 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
 
 	defer db.Close()
 
-	var gqlTodos []*Todo
+	var gqlTodos []*gql.Todo
 	for _, todo := range todos {
-		gqlTodos = append(gqlTodos, &Todo{
+		gqlTodos = append(gqlTodos, &gql.Todo{
 			ID:        todo.ID,
 			Content:   todo.Content,
 			Done:      todo.Done,
@@ -126,7 +112,12 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*Todo, error) {
 	return gqlTodos, nil
 }
 
-// Categories is the resolver for the categories field.
-func (r *queryResolver) Categories(ctx context.Context) ([]*Category, error) {
-	panic(fmt.Errorf("not implemented: Categories - categories"))
+// Category is the resolver for the category field.
+func (r *todoResolver) Category(ctx context.Context, obj *gql.Todo) (*gql.Category, error) {
+	panic(fmt.Errorf("not implemented: Category - category"))
 }
+
+// Todo returns TodoResolver implementation.
+func (r *Resolver) Todo() TodoResolver { return &todoResolver{r} }
+
+type todoResolver struct{ *Resolver }

@@ -7,12 +7,12 @@ run:
 test:
 	go test -v ./e2etest -count=1 -overlay=`testtime`
 gqlgen:
-	go install github.com/99designs/gqlgen@latest
+	go get github.com/99designs/gqlgen@latest
 	go run github.com/99designs/gqlgen generate
 gqlgenc:
 	go run e2etest/gqlgenc/main.go
 xogen:
-	go install github.com/xo/xo@latest
+	go get github.com/xo/xo@latest
 	xo schema -o models --src models/templates mysql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}?tls=true
 migrate:
 	mysqldef -u ${DB_USER} -p ${DB_PASSWORD} -h ${DB_HOST} ${DB_NAME} < ./db/schema.sql

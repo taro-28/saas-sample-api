@@ -14,6 +14,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
+	gql "github.com/taro-28/saas-sample-api/gql/model"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -38,8 +39,10 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	Category() CategoryResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
+	Todo() TodoResolver
 }
 
 type DirectiveRoot struct {
@@ -53,12 +56,12 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CreateCategory func(childComplexity int, input CreateCategoryInput) int
-		CreateTodo     func(childComplexity int, input CreateTodoInput) int
+		CreateCategory func(childComplexity int, input gql.CreateCategoryInput) int
+		CreateTodo     func(childComplexity int, input gql.CreateTodoInput) int
 		DeleteCategory func(childComplexity int, id string) int
 		DeleteTodo     func(childComplexity int, id string) int
-		UpdateCategory func(childComplexity int, input UpdateCategoryInput) int
-		UpdateTodo     func(childComplexity int, input UpdateTodoInput) int
+		UpdateCategory func(childComplexity int, input gql.UpdateCategoryInput) int
+		UpdateTodo     func(childComplexity int, input gql.UpdateTodoInput) int
 	}
 
 	Query struct {
@@ -75,17 +78,23 @@ type ComplexityRoot struct {
 	}
 }
 
+type CategoryResolver interface {
+	Todos(ctx context.Context, obj *gql.Category) ([]*gql.Todo, error)
+}
 type MutationResolver interface {
-	CreateTodo(ctx context.Context, input CreateTodoInput) (*Todo, error)
-	UpdateTodo(ctx context.Context, input UpdateTodoInput) (*Todo, error)
-	DeleteTodo(ctx context.Context, id string) (string, error)
-	CreateCategory(ctx context.Context, input CreateCategoryInput) (*Category, error)
-	UpdateCategory(ctx context.Context, input UpdateCategoryInput) (*Category, error)
+	CreateCategory(ctx context.Context, input gql.CreateCategoryInput) (*gql.Category, error)
+	UpdateCategory(ctx context.Context, input gql.UpdateCategoryInput) (*gql.Category, error)
 	DeleteCategory(ctx context.Context, id string) (string, error)
+	CreateTodo(ctx context.Context, input gql.CreateTodoInput) (*gql.Todo, error)
+	UpdateTodo(ctx context.Context, input gql.UpdateTodoInput) (*gql.Todo, error)
+	DeleteTodo(ctx context.Context, id string) (string, error)
 }
 type QueryResolver interface {
-	Todos(ctx context.Context) ([]*Todo, error)
-	Categories(ctx context.Context) ([]*Category, error)
+	Categories(ctx context.Context) ([]*gql.Category, error)
+	Todos(ctx context.Context) ([]*gql.Todo, error)
+}
+type TodoResolver interface {
+	Category(ctx context.Context, obj *gql.Todo) (*gql.Category, error)
 }
 
 type executableSchema struct {
@@ -138,7 +147,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateCategory(childComplexity, args["input"].(CreateCategoryInput)), true
+		return e.complexity.Mutation.CreateCategory(childComplexity, args["input"].(gql.CreateCategoryInput)), true
 
 	case "Mutation.createTodo":
 		if e.complexity.Mutation.CreateTodo == nil {
@@ -150,7 +159,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateTodo(childComplexity, args["input"].(CreateTodoInput)), true
+		return e.complexity.Mutation.CreateTodo(childComplexity, args["input"].(gql.CreateTodoInput)), true
 
 	case "Mutation.deleteCategory":
 		if e.complexity.Mutation.DeleteCategory == nil {
@@ -186,7 +195,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateCategory(childComplexity, args["input"].(UpdateCategoryInput)), true
+		return e.complexity.Mutation.UpdateCategory(childComplexity, args["input"].(gql.UpdateCategoryInput)), true
 
 	case "Mutation.updateTodo":
 		if e.complexity.Mutation.UpdateTodo == nil {
@@ -198,7 +207,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateTodo(childComplexity, args["input"].(UpdateTodoInput)), true
+		return e.complexity.Mutation.UpdateTodo(childComplexity, args["input"].(gql.UpdateTodoInput)), true
 
 	case "Query.categories":
 		if e.complexity.Query.Categories == nil {
@@ -357,7 +366,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema.graphql" "todo.graphql"
+//go:embed "category.graphql" "schema.graphql" "todo.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -369,6 +378,7 @@ func sourceData(filename string) string {
 }
 
 var sources = []*ast.Source{
+	{Name: "category.graphql", Input: sourceData("category.graphql"), BuiltIn: false},
 	{Name: "schema.graphql", Input: sourceData("schema.graphql"), BuiltIn: false},
 	{Name: "todo.graphql", Input: sourceData("todo.graphql"), BuiltIn: false},
 }
@@ -381,10 +391,10 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 func (ec *executionContext) field_Mutation_createCategory_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 CreateCategoryInput
+	var arg0 gql.CreateCategoryInput
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-		arg0, err = ec.unmarshalNCreateCategoryInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐCreateCategoryInput(ctx, tmp)
+		arg0, err = ec.unmarshalNCreateCategoryInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐCreateCategoryInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -396,10 +406,10 @@ func (ec *executionContext) field_Mutation_createCategory_args(ctx context.Conte
 func (ec *executionContext) field_Mutation_createTodo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 CreateTodoInput
+	var arg0 gql.CreateTodoInput
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-		arg0, err = ec.unmarshalNCreateTodoInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐCreateTodoInput(ctx, tmp)
+		arg0, err = ec.unmarshalNCreateTodoInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐCreateTodoInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -441,10 +451,10 @@ func (ec *executionContext) field_Mutation_deleteTodo_args(ctx context.Context, 
 func (ec *executionContext) field_Mutation_updateCategory_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 UpdateCategoryInput
+	var arg0 gql.UpdateCategoryInput
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-		arg0, err = ec.unmarshalNUpdateCategoryInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐUpdateCategoryInput(ctx, tmp)
+		arg0, err = ec.unmarshalNUpdateCategoryInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐUpdateCategoryInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -456,10 +466,10 @@ func (ec *executionContext) field_Mutation_updateCategory_args(ctx context.Conte
 func (ec *executionContext) field_Mutation_updateTodo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 UpdateTodoInput
+	var arg0 gql.UpdateTodoInput
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-		arg0, err = ec.unmarshalNUpdateTodoInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐUpdateTodoInput(ctx, tmp)
+		arg0, err = ec.unmarshalNUpdateTodoInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐUpdateTodoInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -521,7 +531,7 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _Category_id(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+func (ec *executionContext) _Category_id(ctx context.Context, field graphql.CollectedField, obj *gql.Category) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Category_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -565,7 +575,7 @@ func (ec *executionContext) fieldContext_Category_id(ctx context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Category_name(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+func (ec *executionContext) _Category_name(ctx context.Context, field graphql.CollectedField, obj *gql.Category) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Category_name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -609,7 +619,7 @@ func (ec *executionContext) fieldContext_Category_name(ctx context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Category_todos(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+func (ec *executionContext) _Category_todos(ctx context.Context, field graphql.CollectedField, obj *gql.Category) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Category_todos(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -623,7 +633,7 @@ func (ec *executionContext) _Category_todos(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Todos, nil
+		return ec.resolvers.Category().Todos(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -635,17 +645,17 @@ func (ec *executionContext) _Category_todos(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*Todo)
+	res := resTmp.([]*gql.Todo)
 	fc.Result = res
-	return ec.marshalNTodo2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐTodoᚄ(ctx, field.Selections, res)
+	return ec.marshalNTodo2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐTodoᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Category_todos(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Category",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -665,6 +675,187 @@ func (ec *executionContext) fieldContext_Category_todos(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createCategory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createCategory(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateCategory(rctx, fc.Args["input"].(gql.CreateCategoryInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gql.Category)
+	fc.Result = res
+	return ec.marshalNCategory2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐCategory(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createCategory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Category_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Category_name(ctx, field)
+			case "todos":
+				return ec.fieldContext_Category_todos(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Category", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateCategory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateCategory(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateCategory(rctx, fc.Args["input"].(gql.UpdateCategoryInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gql.Category)
+	fc.Result = res
+	return ec.marshalNCategory2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐCategory(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateCategory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Category_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Category_name(ctx, field)
+			case "todos":
+				return ec.fieldContext_Category_todos(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Category", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteCategory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteCategory(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteCategory(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteCategory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createTodo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_createTodo(ctx, field)
 	if err != nil {
@@ -679,7 +870,7 @@ func (ec *executionContext) _Mutation_createTodo(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateTodo(rctx, fc.Args["input"].(CreateTodoInput))
+		return ec.resolvers.Mutation().CreateTodo(rctx, fc.Args["input"].(gql.CreateTodoInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -691,9 +882,9 @@ func (ec *executionContext) _Mutation_createTodo(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*Todo)
+	res := resTmp.(*gql.Todo)
 	fc.Result = res
-	return ec.marshalNTodo2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐTodo(ctx, field.Selections, res)
+	return ec.marshalNTodo2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐTodo(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_createTodo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -746,7 +937,7 @@ func (ec *executionContext) _Mutation_updateTodo(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateTodo(rctx, fc.Args["input"].(UpdateTodoInput))
+		return ec.resolvers.Mutation().UpdateTodo(rctx, fc.Args["input"].(gql.UpdateTodoInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -758,9 +949,9 @@ func (ec *executionContext) _Mutation_updateTodo(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*Todo)
+	res := resTmp.(*gql.Todo)
 	fc.Result = res
-	return ec.marshalNTodo2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐTodo(ctx, field.Selections, res)
+	return ec.marshalNTodo2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐTodo(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_updateTodo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -854,8 +1045,8 @@ func (ec *executionContext) fieldContext_Mutation_deleteTodo(ctx context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_createCategory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_createCategory(ctx, field)
+func (ec *executionContext) _Query_categories(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_categories(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -868,7 +1059,7 @@ func (ec *executionContext) _Mutation_createCategory(ctx context.Context, field 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateCategory(rctx, fc.Args["input"].(CreateCategoryInput))
+		return ec.resolvers.Query().Categories(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -880,14 +1071,14 @@ func (ec *executionContext) _Mutation_createCategory(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*Category)
+	res := resTmp.([]*gql.Category)
 	fc.Result = res
-	return ec.marshalNCategory2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐCategory(ctx, field.Selections, res)
+	return ec.marshalNCategory2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐCategoryᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_createCategory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_categories(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "Mutation",
+		Object:     "Query",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
@@ -902,135 +1093,6 @@ func (ec *executionContext) fieldContext_Mutation_createCategory(ctx context.Con
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Category", field.Name)
 		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_createCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_updateCategory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_updateCategory(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateCategory(rctx, fc.Args["input"].(UpdateCategoryInput))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*Category)
-	fc.Result = res
-	return ec.marshalNCategory2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐCategory(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_updateCategory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Category_id(ctx, field)
-			case "name":
-				return ec.fieldContext_Category_name(ctx, field)
-			case "todos":
-				return ec.fieldContext_Category_todos(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Category", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_updateCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_deleteCategory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_deleteCategory(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DeleteCategory(rctx, fc.Args["id"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_deleteCategory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_deleteCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
 	}
 	return fc, nil
 }
@@ -1061,9 +1123,9 @@ func (ec *executionContext) _Query_todos(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*Todo)
+	res := resTmp.([]*gql.Todo)
 	fc.Result = res
-	return ec.marshalNTodo2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐTodoᚄ(ctx, field.Selections, res)
+	return ec.marshalNTodo2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐTodoᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_todos(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1086,58 +1148,6 @@ func (ec *executionContext) fieldContext_Query_todos(ctx context.Context, field 
 				return ec.fieldContext_Todo_createdAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Todo", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_categories(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_categories(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Categories(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*Category)
-	fc.Result = res
-	return ec.marshalNCategory2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐCategoryᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_categories(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Category_id(ctx, field)
-			case "name":
-				return ec.fieldContext_Category_name(ctx, field)
-			case "todos":
-				return ec.fieldContext_Category_todos(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Category", field.Name)
 		},
 	}
 	return fc, nil
@@ -1272,7 +1282,7 @@ func (ec *executionContext) fieldContext_Query___schema(ctx context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Todo_id(ctx context.Context, field graphql.CollectedField, obj *Todo) (ret graphql.Marshaler) {
+func (ec *executionContext) _Todo_id(ctx context.Context, field graphql.CollectedField, obj *gql.Todo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Todo_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1316,7 +1326,7 @@ func (ec *executionContext) fieldContext_Todo_id(ctx context.Context, field grap
 	return fc, nil
 }
 
-func (ec *executionContext) _Todo_content(ctx context.Context, field graphql.CollectedField, obj *Todo) (ret graphql.Marshaler) {
+func (ec *executionContext) _Todo_content(ctx context.Context, field graphql.CollectedField, obj *gql.Todo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Todo_content(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1360,7 +1370,7 @@ func (ec *executionContext) fieldContext_Todo_content(ctx context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Todo_category(ctx context.Context, field graphql.CollectedField, obj *Todo) (ret graphql.Marshaler) {
+func (ec *executionContext) _Todo_category(ctx context.Context, field graphql.CollectedField, obj *gql.Todo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Todo_category(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1374,7 +1384,7 @@ func (ec *executionContext) _Todo_category(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Category, nil
+		return ec.resolvers.Todo().Category(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1383,17 +1393,17 @@ func (ec *executionContext) _Todo_category(ctx context.Context, field graphql.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Category)
+	res := resTmp.(*gql.Category)
 	fc.Result = res
-	return ec.marshalOCategory2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐCategory(ctx, field.Selections, res)
+	return ec.marshalOCategory2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐCategory(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Todo_category(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Todo",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -1409,7 +1419,7 @@ func (ec *executionContext) fieldContext_Todo_category(ctx context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Todo_done(ctx context.Context, field graphql.CollectedField, obj *Todo) (ret graphql.Marshaler) {
+func (ec *executionContext) _Todo_done(ctx context.Context, field graphql.CollectedField, obj *gql.Todo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Todo_done(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1453,7 +1463,7 @@ func (ec *executionContext) fieldContext_Todo_done(ctx context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Todo_createdAt(ctx context.Context, field graphql.CollectedField, obj *Todo) (ret graphql.Marshaler) {
+func (ec *executionContext) _Todo_createdAt(ctx context.Context, field graphql.CollectedField, obj *gql.Todo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Todo_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -3270,8 +3280,8 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputCreateCategoryInput(ctx context.Context, obj interface{}) (CreateCategoryInput, error) {
-	var it CreateCategoryInput
+func (ec *executionContext) unmarshalInputCreateCategoryInput(ctx context.Context, obj interface{}) (gql.CreateCategoryInput, error) {
+	var it gql.CreateCategoryInput
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
@@ -3297,8 +3307,8 @@ func (ec *executionContext) unmarshalInputCreateCategoryInput(ctx context.Contex
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCreateTodoInput(ctx context.Context, obj interface{}) (CreateTodoInput, error) {
-	var it CreateTodoInput
+func (ec *executionContext) unmarshalInputCreateTodoInput(ctx context.Context, obj interface{}) (gql.CreateTodoInput, error) {
+	var it gql.CreateTodoInput
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
@@ -3331,8 +3341,8 @@ func (ec *executionContext) unmarshalInputCreateTodoInput(ctx context.Context, o
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputUpdateCategoryInput(ctx context.Context, obj interface{}) (UpdateCategoryInput, error) {
-	var it UpdateCategoryInput
+func (ec *executionContext) unmarshalInputUpdateCategoryInput(ctx context.Context, obj interface{}) (gql.UpdateCategoryInput, error) {
+	var it gql.UpdateCategoryInput
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
@@ -3365,8 +3375,8 @@ func (ec *executionContext) unmarshalInputUpdateCategoryInput(ctx context.Contex
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputUpdateTodoInput(ctx context.Context, obj interface{}) (UpdateTodoInput, error) {
-	var it UpdateTodoInput
+func (ec *executionContext) unmarshalInputUpdateTodoInput(ctx context.Context, obj interface{}) (gql.UpdateTodoInput, error) {
+	var it gql.UpdateTodoInput
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
@@ -3423,7 +3433,7 @@ func (ec *executionContext) unmarshalInputUpdateTodoInput(ctx context.Context, o
 
 var categoryImplementors = []string{"Category"}
 
-func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet, obj *Category) graphql.Marshaler {
+func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet, obj *gql.Category) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, categoryImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -3435,18 +3445,49 @@ func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet,
 		case "id":
 			out.Values[i] = ec._Category_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "name":
 			out.Values[i] = ec._Category_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "todos":
-			out.Values[i] = ec._Category_todos(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Category_todos(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3489,27 +3530,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Mutation")
-		case "createTodo":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_createTodo(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "updateTodo":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_updateTodo(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "deleteTodo":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_deleteTodo(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "createCategory":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createCategory(ctx, field)
@@ -3527,6 +3547,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deleteCategory":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteCategory(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createTodo":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createTodo(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateTodo":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateTodo(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteTodo":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteTodo(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -3573,7 +3614,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
-		case "todos":
+		case "categories":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -3582,7 +3623,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_todos(ctx, field)
+				res = ec._Query_categories(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -3595,7 +3636,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "categories":
+		case "todos":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -3604,7 +3645,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_categories(ctx, field)
+				res = ec._Query_todos(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -3650,7 +3691,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 
 var todoImplementors = []string{"Todo"}
 
-func (ec *executionContext) _Todo(ctx context.Context, sel ast.SelectionSet, obj *Todo) graphql.Marshaler {
+func (ec *executionContext) _Todo(ctx context.Context, sel ast.SelectionSet, obj *gql.Todo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, todoImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -3662,24 +3703,55 @@ func (ec *executionContext) _Todo(ctx context.Context, sel ast.SelectionSet, obj
 		case "id":
 			out.Values[i] = ec._Todo_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "content":
 			out.Values[i] = ec._Todo_content(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "category":
-			out.Values[i] = ec._Todo_category(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Todo_category(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "done":
 			out.Values[i] = ec._Todo_done(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "createdAt":
 			out.Values[i] = ec._Todo_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -4045,11 +4117,11 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalNCategory2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐCategory(ctx context.Context, sel ast.SelectionSet, v Category) graphql.Marshaler {
+func (ec *executionContext) marshalNCategory2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐCategory(ctx context.Context, sel ast.SelectionSet, v gql.Category) graphql.Marshaler {
 	return ec._Category(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNCategory2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐCategoryᚄ(ctx context.Context, sel ast.SelectionSet, v []*Category) graphql.Marshaler {
+func (ec *executionContext) marshalNCategory2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐCategoryᚄ(ctx context.Context, sel ast.SelectionSet, v []*gql.Category) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -4073,7 +4145,7 @@ func (ec *executionContext) marshalNCategory2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsa
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCategory2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐCategory(ctx, sel, v[i])
+			ret[i] = ec.marshalNCategory2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐCategory(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -4093,7 +4165,7 @@ func (ec *executionContext) marshalNCategory2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsa
 	return ret
 }
 
-func (ec *executionContext) marshalNCategory2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐCategory(ctx context.Context, sel ast.SelectionSet, v *Category) graphql.Marshaler {
+func (ec *executionContext) marshalNCategory2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐCategory(ctx context.Context, sel ast.SelectionSet, v *gql.Category) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -4103,12 +4175,12 @@ func (ec *executionContext) marshalNCategory2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaas�
 	return ec._Category(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNCreateCategoryInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐCreateCategoryInput(ctx context.Context, v interface{}) (CreateCategoryInput, error) {
+func (ec *executionContext) unmarshalNCreateCategoryInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐCreateCategoryInput(ctx context.Context, v interface{}) (gql.CreateCategoryInput, error) {
 	res, err := ec.unmarshalInputCreateCategoryInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNCreateTodoInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐCreateTodoInput(ctx context.Context, v interface{}) (CreateTodoInput, error) {
+func (ec *executionContext) unmarshalNCreateTodoInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐCreateTodoInput(ctx context.Context, v interface{}) (gql.CreateTodoInput, error) {
 	res, err := ec.unmarshalInputCreateTodoInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -4158,11 +4230,11 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 	return res
 }
 
-func (ec *executionContext) marshalNTodo2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐTodo(ctx context.Context, sel ast.SelectionSet, v Todo) graphql.Marshaler {
+func (ec *executionContext) marshalNTodo2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐTodo(ctx context.Context, sel ast.SelectionSet, v gql.Todo) graphql.Marshaler {
 	return ec._Todo(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNTodo2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐTodoᚄ(ctx context.Context, sel ast.SelectionSet, v []*Todo) graphql.Marshaler {
+func (ec *executionContext) marshalNTodo2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐTodoᚄ(ctx context.Context, sel ast.SelectionSet, v []*gql.Todo) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -4186,7 +4258,7 @@ func (ec *executionContext) marshalNTodo2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsaas�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNTodo2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐTodo(ctx, sel, v[i])
+			ret[i] = ec.marshalNTodo2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐTodo(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -4206,7 +4278,7 @@ func (ec *executionContext) marshalNTodo2ᚕᚖgithubᚗcomᚋtaroᚑ28ᚋsaas�
 	return ret
 }
 
-func (ec *executionContext) marshalNTodo2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐTodo(ctx context.Context, sel ast.SelectionSet, v *Todo) graphql.Marshaler {
+func (ec *executionContext) marshalNTodo2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐTodo(ctx context.Context, sel ast.SelectionSet, v *gql.Todo) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -4216,12 +4288,12 @@ func (ec *executionContext) marshalNTodo2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsa
 	return ec._Todo(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNUpdateCategoryInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐUpdateCategoryInput(ctx context.Context, v interface{}) (UpdateCategoryInput, error) {
+func (ec *executionContext) unmarshalNUpdateCategoryInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐUpdateCategoryInput(ctx context.Context, v interface{}) (gql.UpdateCategoryInput, error) {
 	res, err := ec.unmarshalInputUpdateCategoryInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNUpdateTodoInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐUpdateTodoInput(ctx context.Context, v interface{}) (UpdateTodoInput, error) {
+func (ec *executionContext) unmarshalNUpdateTodoInput2githubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐUpdateTodoInput(ctx context.Context, v interface{}) (gql.UpdateTodoInput, error) {
 	res, err := ec.unmarshalInputUpdateTodoInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -4505,7 +4577,7 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
-func (ec *executionContext) marshalOCategory2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚐCategory(ctx context.Context, sel ast.SelectionSet, v *Category) graphql.Marshaler {
+func (ec *executionContext) marshalOCategory2ᚖgithubᚗcomᚋtaroᚑ28ᚋsaasᚑsampleᚑapiᚋgqlᚋmodelᚐCategory(ctx context.Context, sel ast.SelectionSet, v *gql.Category) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
