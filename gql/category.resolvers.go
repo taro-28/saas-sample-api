@@ -18,7 +18,7 @@ import (
 func (r *categoryResolver) Todos(ctx context.Context, obj *gql.Category) ([]*gql.Todo, error) {
 	todo, err := models.AllTodos(ctx, r.DB)
 	if err != nil {
-		log.Fatalf("failed to get todo by category id: %v", err)
+		return nil, err
 	}
 
 	var todos []*gql.Todo
@@ -46,7 +46,7 @@ func (r *mutationResolver) CreateCategory(ctx context.Context, input gql.CreateC
 	}
 
 	if err := category.Insert(ctx, r.DB); err != nil {
-		log.Fatalf("failed to insert: %v", err)
+		return nil, err
 	}
 
 	return &gql.Category{
@@ -60,12 +60,12 @@ func (r *mutationResolver) CreateCategory(ctx context.Context, input gql.CreateC
 func (r *mutationResolver) UpdateCategory(ctx context.Context, input gql.UpdateCategoryInput) (*gql.Category, error) {
 	category, err := models.CategoryByID(ctx, r.DB, input.ID)
 	if err != nil {
-		log.Fatalf("failed to get category by id: %v", err)
+		return nil, err
 	}
 
 	category.Name = input.Name
 	if err := category.Update(ctx, r.DB); err != nil {
-		log.Fatalf("failed to update category: %v", err)
+		return nil, err
 	}
 
 	return &gql.Category{
@@ -79,11 +79,10 @@ func (r *mutationResolver) UpdateCategory(ctx context.Context, input gql.UpdateC
 func (r *mutationResolver) DeleteCategory(ctx context.Context, id string) (string, error) {
 	category, err := models.CategoryByID(ctx, r.DB, id)
 	if err != nil {
-		log.Fatalf("failed to get category by id: %v", err)
+		return "", err
 	}
 
-	err = category.Delete(ctx, r.DB)
-	if err != nil {
+	if err = category.Delete(ctx, r.DB); err != nil {
 		log.Fatalf("failed to delete category: %v", err)
 	}
 
@@ -94,7 +93,7 @@ func (r *mutationResolver) DeleteCategory(ctx context.Context, id string) (strin
 func (r *queryResolver) Categories(ctx context.Context) ([]*gql.Category, error) {
 	categories, err := models.AllCategorys(ctx, r.DB)
 	if err != nil {
-		log.Fatalf("failed to get all categories: %v", err)
+		return nil, err
 	}
 
 	var gqlCategories []*gql.Category

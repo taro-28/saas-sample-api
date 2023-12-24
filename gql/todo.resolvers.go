@@ -7,7 +7,6 @@ package gql
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 	"time"
 
@@ -25,7 +24,6 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input gql.CreateTodoI
 				Valid:  false,
 			}, nil
 		}
-		fmt.Printf("input.CategoryID: %v\n", *input.CategoryID)
 		if _, err := models.CategoryByID(ctx, r.DB, *input.CategoryID); err != nil {
 			return nil, err
 		}

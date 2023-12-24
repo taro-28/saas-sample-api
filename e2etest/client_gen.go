@@ -44,17 +44,7 @@ type TodoFragment struct {
 	Category  *CategoryFragment "json:\"category\" graphql:\"category\""
 }
 type Categories struct {
-	Categories []*struct {
-		ID        string "json:\"id\" graphql:\"id\""
-		Name      string "json:\"name\" graphql:\"name\""
-		CreatedAt int    "json:\"createdAt\" graphql:\"createdAt\""
-		Todos     []*struct {
-			ID        string "json:\"id\" graphql:\"id\""
-			Content   string "json:\"content\" graphql:\"content\""
-			Done      bool   "json:\"done\" graphql:\"done\""
-			CreatedAt int    "json:\"createdAt\" graphql:\"createdAt\""
-		} "json:\"todos\" graphql:\"todos\""
-	} "json:\"categories\" graphql:\"categories\""
+	Categories []*CategoryFragment "json:\"categories\" graphql:\"categories\""
 }
 type CreateCategory struct {
 	CreateCategory CategoryFragment "json:\"createCategory\" graphql:\"createCategory\""
@@ -84,12 +74,6 @@ type UpdateTodoDone struct {
 const CategoriesDocument = `query Categories {
 	categories {
 		... CategoryFragment
-		todos {
-			id
-			content
-			done
-			createdAt
-		}
 	}
 }
 fragment CategoryFragment on Category {
@@ -110,8 +94,8 @@ func (c *Client) Categories(ctx context.Context, httpRequestOptions ...client.HT
 	return &res, nil
 }
 
-const CreateCategoryDocument = `mutation CreateCategory ($name: String!) {
-	createCategory(input: {name:$name}) {
+const CreateCategoryDocument = `mutation CreateCategory ($input: CreateCategoryInput!) {
+	createCategory(input: $input) {
 		... CategoryFragment
 	}
 }
@@ -122,9 +106,9 @@ fragment CategoryFragment on Category {
 }
 `
 
-func (c *Client) CreateCategory(ctx context.Context, name string, httpRequestOptions ...client.HTTPRequestOption) (*CreateCategory, error) {
+func (c *Client) CreateCategory(ctx context.Context, input gql.CreateCategoryInput, httpRequestOptions ...client.HTTPRequestOption) (*CreateCategory, error) {
 	vars := map[string]interface{}{
-		"name": name,
+		"input": input,
 	}
 
 	var res CreateCategory

@@ -18,7 +18,9 @@ func TestE2E_Todo(t *testing.T) {
 	gqlClient := setupGqlServerAndClient(t)
 
 	category := func() *CategoryFragment {
-		category, err := gqlClient.CreateCategory(ctx, "test")
+		category, err := gqlClient.CreateCategory(ctx, gql.CreateCategoryInput{
+			Name: "test",
+		})
 		if err != nil {
 			t.Fatalf("failed to create category: %v", err)
 		}
