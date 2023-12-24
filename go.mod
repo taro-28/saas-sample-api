@@ -6,10 +6,12 @@ require (
 	github.com/99designs/gqlgen v0.17.41
 	github.com/Yamashou/gqlgenc v0.16.0
 	github.com/go-sql-driver/mysql v1.7.1
+	github.com/google/go-cmp v0.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kenshaw/inflector v0.2.0
 	github.com/kenshaw/snaker v0.2.0
 	github.com/rs/xid v1.5.0
+	github.com/tenntenn/testtime v0.2.2
 	github.com/testcontainers/testcontainers-go/modules/mysql v0.26.0
 	github.com/vektah/gqlparser/v2 v2.5.10
 	github.com/xo/xo v1.0.0
@@ -35,7 +37,6 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/uuid v1.5.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.3 // indirect
@@ -59,7 +60,6 @@ require (
 	github.com/sosodev/duration v1.2.0 // indirect
 	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/tenntenn/testtime v0.2.2 // indirect
 	github.com/testcontainers/testcontainers-go v0.26.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
