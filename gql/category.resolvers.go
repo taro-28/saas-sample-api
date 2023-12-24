@@ -6,34 +6,105 @@ package gql
 
 import (
 	"context"
-	"fmt"
+	"log"
+	"time"
 
+	"github.com/rs/xid"
 	gql "github.com/taro-28/saas-sample-api/gql/model"
+	"github.com/taro-28/saas-sample-api/models"
 )
 
 // Todos is the resolver for the todos field.
 func (r *categoryResolver) Todos(ctx context.Context, obj *gql.Category) ([]*gql.Todo, error) {
-	panic(fmt.Errorf("not implemented: Todos - todos"))
+	todo, err := models.AllTodos(ctx, r.DB)
+	if err != nil {
+		log.Fatalf("failed to get todo by category id: %v", err)
+	}
+
+	var todos []*gql.Todo
+	for _, t := range todo {
+		if t.CategoryID.String != obj.ID {
+			continue
+		}
+		todos = append(todos, &gql.Todo{
+			ID:        t.ID,
+			Content:   t.Content,
+			Done:      t.Done,
+			CreatedAt: int(t.CreatedAt),
+		})
+	}
+
+	return todos, nil
 }
 
 // CreateCategory is the resolver for the createCategory field.
 func (r *mutationResolver) CreateCategory(ctx context.Context, input gql.CreateCategoryInput) (*gql.Category, error) {
-	panic(fmt.Errorf("not implemented: CreateCategory - createCategory"))
+	category := &models.Category{
+		ID:        xid.New().String(),
+		Name:      input.Name,
+		CreatedAt: uint(time.Now().Unix()),
+	}
+
+	if err := category.Insert(ctx, r.DB); err != nil {
+		log.Fatalf("failed to insert: %v", err)
+	}
+
+	return &gql.Category{
+		ID:   category.ID,
+		Name: category.Name,
+	}, nil
 }
 
 // UpdateCategory is the resolver for the updateCategory field.
 func (r *mutationResolver) UpdateCategory(ctx context.Context, input gql.UpdateCategoryInput) (*gql.Category, error) {
-	panic(fmt.Errorf("not implemented: UpdateCategory - updateCategory"))
+	category, err := models.CategoryByID(ctx, r.DB, input.ID)
+	if err != nil {
+		log.Fatalf("failed to get category by id: %v", err)
+	}
+
+	category.Name = input.Name
+	if err := category.Update(ctx, r.DB); err != nil {
+		log.Fatalf("failed to update category: %v", err)
+	}
+
+	return &gql.Category{
+		ID:        category.ID,
+		Name:      category.Name,
+		CreatedAt: int(category.CreatedAt),
+	}, nil
 }
 
 // DeleteCategory is the resolver for the deleteCategory field.
 func (r *mutationResolver) DeleteCategory(ctx context.Context, id string) (string, error) {
-	panic(fmt.Errorf("not implemented: DeleteCategory - deleteCategory"))
+	category, err := models.CategoryByID(ctx, r.DB, id)
+	if err != nil {
+		log.Fatalf("failed to get category by id: %v", err)
+	}
+
+	err = category.Delete(ctx, r.DB)
+	if err != nil {
+		log.Fatalf("failed to delete category: %v", err)
+	}
+
+	return id, nil
 }
 
 // Categories is the resolver for the categories field.
 func (r *queryResolver) Categories(ctx context.Context) ([]*gql.Category, error) {
-	panic(fmt.Errorf("not implemented: Categories - categories"))
+	categories, err := models.AllCategorys(ctx, r.DB)
+	if err != nil {
+		log.Fatalf("failed to get all categories: %v", err)
+	}
+
+	var gqlCategories []*gql.Category
+	for _, c := range categories {
+		gqlCategories = append(gqlCategories, &gql.Category{
+			ID:        c.ID,
+			Name:      c.Name,
+			CreatedAt: int(c.CreatedAt),
+		})
+	}
+	return gqlCategories, nil
 }
 
 // Category returns CategoryResolver implementation.
