@@ -18,10 +18,16 @@ import (
 
 func setupDB(ctx context.Context, t *testing.T) {
 	t.Helper()
+	const (
+		DBName = "foo"
+		DBUser = "root"
+		DBPass = "password"
+	)
+
 	mysqlContainer, err := mysql.RunContainer(ctx,
-		mysql.WithDatabase("foo"),
-		mysql.WithUsername("root"),
-		mysql.WithPassword("password"),
+		mysql.WithDatabase(DBName),
+		mysql.WithUsername(DBUser),
+		mysql.WithPassword(DBPass),
 		mysql.WithScripts("../db/schema.sql"),
 	)
 	if err != nil {
@@ -34,7 +40,7 @@ func setupDB(ctx context.Context, t *testing.T) {
 	}
 
 	originalValue := os.Getenv("DSN")
-	os.Setenv("DSN", fmt.Sprintf("root:password@tcp(%s)/foo", ep))
+	os.Setenv("DSN", fmt.Sprintf("%s:%s@tcp(%s)/%s", DBUser, DBPass, ep, DBName))
 
 	t.Cleanup(func() {
 		if err := mysqlContainer.Terminate(ctx); err != nil {
