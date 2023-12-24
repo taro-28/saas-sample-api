@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/Yamashou/gqlgenc/client"
-	"github.com/taro-28/saas-sample-api/gql"
+	gql "github.com/taro-28/saas-sample-api/gql/model"
 )
 
 type Client struct {
@@ -19,12 +19,16 @@ func NewClient(cli *http.Client, baseURL string, options ...client.HTTPRequestOp
 }
 
 type Query struct {
-	Todos []*gql.Todo "json:\"todos\" graphql:\"todos\""
+	Categories []*gql.Category "json:\"categories\" graphql:\"categories\""
+	Todos      []*gql.Todo     "json:\"todos\" graphql:\"todos\""
 }
 type Mutation struct {
-	CreateTodo gql.Todo "json:\"createTodo\" graphql:\"createTodo\""
-	UpdateTodo gql.Todo "json:\"updateTodo\" graphql:\"updateTodo\""
-	DeleteTodo string   "json:\"deleteTodo\" graphql:\"deleteTodo\""
+	CreateCategory gql.Category "json:\"createCategory\" graphql:\"createCategory\""
+	UpdateCategory gql.Category "json:\"updateCategory\" graphql:\"updateCategory\""
+	DeleteCategory string       "json:\"deleteCategory\" graphql:\"deleteCategory\""
+	CreateTodo     gql.Todo     "json:\"createTodo\" graphql:\"createTodo\""
+	UpdateTodo     gql.Todo     "json:\"updateTodo\" graphql:\"updateTodo\""
+	DeleteTodo     string       "json:\"deleteTodo\" graphql:\"deleteTodo\""
 }
 type TodoFragment struct {
 	ID        string "json:\"id\" graphql:\"id\""
