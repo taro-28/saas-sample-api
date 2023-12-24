@@ -129,12 +129,11 @@ func (r *mutationResolver) UpdateTodoDone(ctx context.Context, input gql.UpdateT
 func (r *mutationResolver) DeleteTodo(ctx context.Context, id string) (string, error) {
 	todo, err := models.TodoByID(ctx, r.DB, id)
 	if err != nil {
-		log.Fatalf("failed to get todo by id: %v", err)
+		return "", err
 	}
 
-	err = todo.Delete(ctx, r.DB)
-	if err != nil {
-		log.Fatalf("failed to delete todo: %v", err)
+	if err = todo.Delete(ctx, r.DB); err != nil {
+		return "", err
 	}
 
 	return id, nil
