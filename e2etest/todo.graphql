@@ -16,6 +16,12 @@ mutation UpdateTodo($input: UpdateTodoInput!) {
   }
 }
 
+mutation UpdateTodoDone($input: UpdateTodoDoneInput!) {
+  updateTodoDone(input: $input) {
+    ...TodoFragment
+  }
+}
+
 mutation DeleteTodo($id: ID!) {
   deleteTodo(id: $id)
 }

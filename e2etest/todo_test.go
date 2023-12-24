@@ -196,13 +196,95 @@ func TestE2E_Todo(t *testing.T) {
 
 	})
 
-	// t.Run("update done", func(t *testing.T) {
-	// 	t.Parallel()
-	// 	testCases := map[string]struct {
-	// 		input   gql.UpdateTodoDoneInput
-	// 		want    *TodoFragment
-	// 		wantErr bool
-	// 	}{
+	t.Run("update done", func(t *testing.T) {
+		t.Parallel()
+		testCases := map[string]struct {
+			input   gql.UpdateTodoDoneInput
+			want    *TodoFragment
+			wantErr bool
+		}{
+			"ok: to done": {
+				input: gql.UpdateTodoDoneInput{
+					Done: true,
+				},
+				want: &TodoFragment{
+					Content:   "test",
+					Done:      true,
+					CreatedAt: int(testtime.Now().Unix()),
+					Category:  category,
+				},
+			},
+			"ok: to not done": {
+				input: gql.UpdateTodoDoneInput{
+					Done: false,
+				},
+				want: &TodoFragment{
+					Content:   "test",
+					Done:      false,
+					CreatedAt: int(testtime.Now().Unix()),
+					Category:  category,
+				},
+			},
+			"ng:invalid id": {
+				input: gql.UpdateTodoDoneInput{
+					ID:   "invalid",
+					Done: true,
+				},
+				wantErr: true,
+			},
+		}
+
+		for name, tc := range testCases {
+			name := name
+			tc := tc
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+				createRes, err := gqlClient.CreateTodo(ctx, gql.CreateTodoInput{
+					Content:    "test",
+					CategoryID: &category.ID,
+				})
+				if err != nil {
+					t.Fatalf("failed to create todo: %v", err)
+				}
+
+				if tc.input.ID == "" {
+					tc.input.ID = createRes.CreateTodo.ID
+				}
+				updateRes, err := gqlClient.UpdateTodoDone(ctx, tc.input)
+				if tc.wantErr {
+					if err == nil {
+						t.Fatalf("expected error but got nil")
+					}
+					return
+				}
+
+				if err != nil {
+					t.Fatalf("failed to update todo done: %v", err)
+				}
+
+				if diff := cmp.Diff(tc.want, &updateRes.UpdateTodoDone,
+					cmpopts.IgnoreFields(TodoFragment{}, "ID"),
+				); diff != "" {
+					t.Fatalf("mismatch (-want +got):\n%s", diff)
+				}
+
+				todosRes, err := gqlClient.Todos(ctx)
+				if err != nil {
+					t.Fatalf("failed to get todos: %v", err)
+				}
+
+				for _, todo := range todosRes.Todos {
+					if todo.ID != createRes.CreateTodo.ID {
+						continue
+					}
+
+					if diff := cmp.Diff(tc.want, todo, cmpopts.IgnoreFields(TodoFragment{}, "ID")); diff != "" {
+						t.Fatalf("mismatch (-want +got):\n%s", diff)
+					}
+				}
+			})
+		}
+	})
 
 	// testCases := map[string]struct {
 	// 	createInput gql.CreateTodoInput

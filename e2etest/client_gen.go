@@ -77,6 +77,9 @@ type UpdateCategory struct {
 type UpdateTodo struct {
 	UpdateTodo TodoFragment "json:\"updateTodo\" graphql:\"updateTodo\""
 }
+type UpdateTodoDone struct {
+	UpdateTodoDone TodoFragment "json:\"updateTodoDone\" graphql:\"updateTodoDone\""
+}
 
 const CategoriesDocument = `query Categories {
 	categories {
@@ -287,6 +290,40 @@ func (c *Client) UpdateTodo(ctx context.Context, input gql.UpdateTodoInput, http
 
 	var res UpdateTodo
 	if err := c.Client.Post(ctx, "UpdateTodo", UpdateTodoDocument, &res, vars, httpRequestOptions...); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
+const UpdateTodoDoneDocument = `mutation UpdateTodoDone ($input: UpdateTodoDoneInput!) {
+	updateTodoDone(input: $input) {
+		... TodoFragment
+	}
+}
+fragment CategoryFragment on Category {
+	id
+	name
+	createdAt
+}
+fragment TodoFragment on Todo {
+	id
+	content
+	done
+	createdAt
+	category {
+		... CategoryFragment
+	}
+}
+`
+
+func (c *Client) UpdateTodoDone(ctx context.Context, input gql.UpdateTodoDoneInput, httpRequestOptions ...client.HTTPRequestOption) (*UpdateTodoDone, error) {
+	vars := map[string]interface{}{
+		"input": input,
+	}
+
+	var res UpdateTodoDone
+	if err := c.Client.Post(ctx, "UpdateTodoDone", UpdateTodoDoneDocument, &res, vars, httpRequestOptions...); err != nil {
 		return nil, err
 	}
 

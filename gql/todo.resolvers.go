@@ -117,10 +117,11 @@ func (r *mutationResolver) UpdateTodoDone(ctx context.Context, input gql.UpdateT
 	}
 
 	return &gql.Todo{
-		ID:        todo.ID,
-		Content:   todo.Content,
-		Done:      todo.Done,
-		CreatedAt: int(todo.CreatedAt),
+		ID:         todo.ID,
+		Content:    todo.Content,
+		Done:       todo.Done,
+		CreatedAt:  int(todo.CreatedAt),
+		CategoryID: todo.CategoryID.String,
 	}, nil
 }
 
