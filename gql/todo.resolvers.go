@@ -63,28 +63,35 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input gql.CreateTodoI
 func (r *mutationResolver) UpdateTodo(ctx context.Context, input gql.UpdateTodoInput) (*gql.Todo, error) {
 	todo, err := models.TodoByID(ctx, r.DB, input.ID)
 	if err != nil {
-		log.Fatalf("failed to get todo by id: %v", err)
+		return nil, err
 	}
 
 	todo.Content = input.Content
-	todo.CategoryID = func() sql.NullString {
+	categoryId, err := func() (*sql.NullString, error) {
 		if input.CategoryID == nil {
-			return sql.NullString{
+			return &sql.NullString{
 				String: "",
 				Valid:  false,
-			}
+			}, nil
 		}
 		if _, err := models.CategoryByID(ctx, r.DB, *input.CategoryID); err != nil {
-			log.Fatalf("failed to get category by id: %v", err)
+			return nil, err
 		}
-		return sql.NullString{
+		return &sql.NullString{
 			String: *input.CategoryID,
 			Valid:  true,
-		}
+		}, nil
 	}()
+	if err != nil {
+		return nil, err
+	}
+	todo.CategoryID = *categoryId
+	if err != nil {
+		return nil, err
+	}
 
 	if err := todo.Update(ctx, r.DB); err != nil {
-		log.Fatalf("failed to update todo: %v", err)
+		return nil, err
 	}
 
 	return &gql.Todo{
@@ -100,13 +107,13 @@ func (r *mutationResolver) UpdateTodo(ctx context.Context, input gql.UpdateTodoI
 func (r *mutationResolver) UpdateTodoDone(ctx context.Context, input gql.UpdateTodoDoneInput) (*gql.Todo, error) {
 	todo, err := models.TodoByID(ctx, r.DB, input.ID)
 	if err != nil {
-		log.Fatalf("failed to get todo by id: %v", err)
+		return nil, err
 	}
 
 	todo.Done = input.Done
 
 	if err := todo.Update(ctx, r.DB); err != nil {
-		log.Fatalf("failed to update todo: %v", err)
+		return nil, err
 	}
 
 	return &gql.Todo{
