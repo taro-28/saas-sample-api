@@ -12,6 +12,7 @@ import (
 
 	"github.com/rs/xid"
 	gql "github.com/taro-28/saas-sample-api/gql/model"
+	loaders "github.com/taro-28/saas-sample-api/loader"
 	"github.com/taro-28/saas-sample-api/models"
 )
 
@@ -163,7 +164,8 @@ func (r *todoResolver) Category(ctx context.Context, obj *gql.Todo) (*gql.Catego
 	if obj.CategoryID == "" {
 		return nil, nil
 	}
-	category, err := models.CategoryByID(ctx, r.DB, obj.CategoryID)
+
+	category, err := loaders.GetCategory(ctx, obj.CategoryID)
 	if err != nil {
 		return nil, err
 	}

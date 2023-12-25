@@ -11,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/taro-28/saas-sample-api/db"
 	"github.com/taro-28/saas-sample-api/gql"
+	loaders "github.com/taro-28/saas-sample-api/loader"
 )
 
 const defaultPort = "8080"
@@ -29,9 +30,10 @@ func main() {
 		log.Fatalf("failed to connect to db: %v", err)
 	}
 	defer cleanup()
-	srv := handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{
+	var srv http.Handler = handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{
 		DB: db,
 	}}))
+	srv = loaders.Middleware(db, srv)
 
 	http.Handle("/", playground.Handler("SaaS Sample API", "/query"))
 	http.Handle("/query", srv)

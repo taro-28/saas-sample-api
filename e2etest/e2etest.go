@@ -11,6 +11,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/taro-28/saas-sample-api/db"
 	"github.com/taro-28/saas-sample-api/gql"
+	loaders "github.com/taro-28/saas-sample-api/loader"
 	"github.com/testcontainers/testcontainers-go/modules/mysql"
 )
 
@@ -55,10 +56,11 @@ func setupGqlServerAndClient(t *testing.T) *Client {
 	if err != nil {
 		t.Fatalf("failed to connect to db: %v", err)
 	}
-	h := handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{
+	var srv http.Handler = handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{
 		DB: db,
 	}}))
-	s := httptest.NewServer(h)
+	srv = loaders.Middleware(db, srv)
+	s := httptest.NewServer(srv)
 
 	t.Cleanup(func() {
 		cleanup()
