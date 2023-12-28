@@ -11,6 +11,6 @@ linters:
     - maintidx
     - testpackage
     - gomnd
-    # - gci あとで調べる
-    - gci
-    - gofumpt
+    - gci # よくわからん
+    - gofumpt # よくわからん
+    - gocritic # runするとエラーになる
