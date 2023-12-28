@@ -10,3 +10,7 @@ linters:
     - gocyclo
     - maintidx
     - testpackage
+    - gomnd
+    # - gci あとで調べる
+    - gci
+    - gofumpt

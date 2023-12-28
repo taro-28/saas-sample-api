@@ -1,9 +1,10 @@
 package loaders
 
-// import graph gophers with your other imports
+// import graph gophers with your other imports.
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"net/http"
 	"time"
 
@@ -18,13 +19,13 @@ const (
 	loadersKey = ctxKey("dataloaders")
 )
 
-// categoryReader reads Categorys from a database
+// categoryReader reads Categorys from a database.
 type categoryReader struct {
 	db *sql.DB
 }
 
 // getCategorys implements a batch function that can retrieve many categories by ID,
-// for use in a dataloader
+// for use in a dataloader.
 func (c *categoryReader) getCategories(ctx context.Context, keys dataloader.Keys) []*dataloader.Result {
 	categories, err := models.AllCategorys(ctx, c.db)
 	if err != nil {
@@ -49,10 +50,9 @@ func (c *categoryReader) getCategories(ctx context.Context, keys dataloader.Keys
 	}
 
 	return result
-
 }
 
-// handleError creates array of result with the same error repeated for as many items requested
+// handleError creates array of result with the same error repeated for as many items requested.
 func handleError[T any](itemsLength int, err error) []*dataloader.Result {
 	result := make([]*dataloader.Result, itemsLength)
 	for i := 0; i < itemsLength; i++ {
@@ -62,12 +62,12 @@ func handleError[T any](itemsLength int, err error) []*dataloader.Result {
 	return result
 }
 
-// Loaders wrap your data loaders to inject via middleware
+// Loaders wrap your data loaders to inject via middleware.
 type Loaders struct {
 	CategoryLoader *dataloader.Loader
 }
 
-// NewLoaders instantiates data loaders for the middleware
+// NewLoaders instantiates data loaders for the middleware.
 func NewLoaders(conn *sql.DB) *Loaders {
 	// define the data loader
 	ur := &categoryReader{db: conn}
@@ -77,7 +77,7 @@ func NewLoaders(conn *sql.DB) *Loaders {
 	}
 }
 
-// Middleware injects data loaders into the context
+// Middleware injects data loaders into the context.
 func Middleware(conn *sql.DB, next http.Handler) http.Handler {
 	// return a middleware that injects the loader to the request context
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -87,20 +87,30 @@ func Middleware(conn *sql.DB, next http.Handler) http.Handler {
 	})
 }
 
-// For returns the dataloader for a given context
+// For returns the dataloader for a given context.
 func For(ctx context.Context) *Loaders {
-	return ctx.Value(loadersKey).(*Loaders)
+	typed, ok := ctx.Value(loadersKey).(*Loaders)
+	if !ok {
+		panic("no loaders found in context")
+	}
+
+	return typed
 }
 
-// GetCategory returns single category by id efficiently
+// GetCategory returns single category by id efficiently.
 func GetCategory(ctx context.Context, id string) (*gql.Category, error) {
 	loaders := For(ctx)
 	result, err := loaders.CategoryLoader.Load(ctx, dataloader.StringKey(id))()
+	typed, ok := result.(*gql.Category)
 
-	return result.(*gql.Category), err
+	if !ok {
+		return nil, errors.New("unexpected type from dataloader")
+	}
+
+	return typed, err
 }
 
-// GetCategories returns many categories by ids efficiently
+// GetCategories returns many categories by ids efficiently.
 func GetCategories(ctx context.Context, ids dataloader.Keys) ([]*gql.Category, []error) {
 	loaders := For(ctx)
 	result, err := loaders.CategoryLoader.LoadMany(ctx, ids)()
@@ -109,9 +119,15 @@ func GetCategories(ctx context.Context, ids dataloader.Keys) ([]*gql.Category, [
 		return nil, err
 	}
 
-	var categories []*gql.Category
+	categories := make([]*gql.Category, 0, len(result))
+
 	for _, r := range result {
-		categories = append(categories, r.(*gql.Category))
+		typed, ok := r.(*gql.Category)
+		if !ok {
+			return nil, []error{errors.New("unexpected type from dataloader")}
+		}
+
+		categories = append(categories, typed)
 	}
 
 	return categories, nil
