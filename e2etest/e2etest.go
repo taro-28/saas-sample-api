@@ -17,6 +17,7 @@ import (
 
 func setupDB(ctx context.Context, t *testing.T) {
 	t.Helper()
+
 	const (
 		DBName = "foo"
 		DBUser = "root"
@@ -56,9 +57,11 @@ func setupGqlServerAndClient(t *testing.T) *Client {
 	if err != nil {
 		t.Fatalf("failed to connect to db: %v", err)
 	}
+
 	var srv http.Handler = handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{
 		DB: db,
 	}}))
+
 	srv = loaders.Middleware(db, srv)
 	s := httptest.NewServer(srv)
 

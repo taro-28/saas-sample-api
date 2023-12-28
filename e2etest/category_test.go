@@ -12,6 +12,7 @@ import (
 
 func TestE2E_Category(t *testing.T) {
 	t.Parallel()
+
 	ctx := context.Background()
 	setupDB(ctx, t)
 	gqlClient := setupGqlServerAndClient(t)
@@ -116,6 +117,7 @@ func TestE2E_Category(t *testing.T) {
 					if err == nil {
 						t.Fatalf("want error but got nil")
 					}
+
 					return
 				}
 
@@ -184,6 +186,7 @@ func TestE2E_Category(t *testing.T) {
 					if err == nil {
 						t.Fatalf("want error but got nil")
 					}
+
 					return
 				}
 

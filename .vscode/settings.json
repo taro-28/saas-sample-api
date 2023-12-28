@@ -1,5 +1,7 @@
 {
   "[sql]": {
     "editor.defaultFormatter": "inferrinizzard.prettier-sql-vscode"
-  }
+  },
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": ["--config=${workspaceFolder}/.golangci.yml", "--fast"]
 }

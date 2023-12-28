@@ -13,6 +13,7 @@ import (
 
 func TestE2E_Todo(t *testing.T) {
 	t.Parallel()
+
 	ctx := context.Background()
 	setupDB(ctx, t)
 	gqlClient := setupGqlServerAndClient(t)
@@ -24,6 +25,7 @@ func TestE2E_Todo(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create category: %v", err)
 		}
+
 		return &category.CreateCategory
 	}()
 
@@ -59,8 +61,12 @@ func TestE2E_Todo(t *testing.T) {
 			},
 			"ng:invalid category": {
 				input: gql.CreateTodoInput{
-					Content:    "test",
-					CategoryID: func() *string { s := "invalid"; return &s }(),
+					Content: "test",
+					CategoryID: func() *string {
+						s := "invalid"
+
+						return &s
+					}(),
 				},
 				wantErr: true,
 			},
@@ -76,6 +82,7 @@ func TestE2E_Todo(t *testing.T) {
 					if err == nil {
 						t.Fatalf("expected error but got nil")
 					}
+
 					return
 				}
 
@@ -166,6 +173,7 @@ func TestE2E_Todo(t *testing.T) {
 					if err == nil {
 						t.Fatalf("expected error but got nil")
 					}
+
 					return
 				}
 
@@ -195,7 +203,6 @@ func TestE2E_Todo(t *testing.T) {
 				}
 			})
 		}
-
 	})
 
 	t.Run("update done", func(t *testing.T) {
@@ -257,6 +264,7 @@ func TestE2E_Todo(t *testing.T) {
 					if err == nil {
 						t.Fatalf("expected error but got nil")
 					}
+
 					return
 				}
 
@@ -325,6 +333,7 @@ func TestE2E_Todo(t *testing.T) {
 					if err == nil {
 						t.Fatalf("expected error but got nil")
 					}
+
 					return
 				}
 

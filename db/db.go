@@ -10,6 +10,7 @@ func Connect() (*sql.DB, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
+
 	return db, func() {
 		db.Close()
 	}, nil

@@ -16,6 +16,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "failed to load config", err.Error())
 		os.Exit(2)
 	}
+
 	queries := []string{"./e2etest/*.graphql"}
 	clientPackage := config.PackageConfig{
 		Filename: "./e2etest/client_gen.go",
@@ -26,6 +27,7 @@ func main() {
 	err = api.Generate(cfg,
 		api.AddPlugin(clientPlugin),
 	)
+
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(3)

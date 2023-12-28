@@ -1,0 +1,12 @@
+run:
+  skip-files:
+    - "./models/.*.go"
+linters:
+  enable-all: true
+  disable:
+    - funlen
+    - dupl
+    - gocognit
+    - gocyclo
+    - maintidx
+    - testpackage

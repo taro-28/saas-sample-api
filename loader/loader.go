@@ -33,6 +33,7 @@ func (c *categoryReader) getCategories(ctx context.Context, keys dataloader.Keys
 
 	// create a result for each key
 	result := make([]*dataloader.Result, len(keys))
+
 	for i, key := range keys {
 		for _, category := range categories {
 			if category.ID == key.String() {
@@ -41,10 +42,12 @@ func (c *categoryReader) getCategories(ctx context.Context, keys dataloader.Keys
 					Name:      category.Name,
 					CreatedAt: int(category.CreatedAt),
 				}}
+
 				break
 			}
 		}
 	}
+
 	return result
 
 }
@@ -55,6 +58,7 @@ func handleError[T any](itemsLength int, err error) []*dataloader.Result {
 	for i := 0; i < itemsLength; i++ {
 		result[i] = &dataloader.Result{Error: err}
 	}
+
 	return result
 }
 
@@ -67,6 +71,7 @@ type Loaders struct {
 func NewLoaders(conn *sql.DB) *Loaders {
 	// define the data loader
 	ur := &categoryReader{db: conn}
+
 	return &Loaders{
 		CategoryLoader: dataloader.NewBatchedLoader(ur.getCategories, dataloader.WithWait(time.Millisecond)),
 	}
@@ -91,6 +96,7 @@ func For(ctx context.Context) *Loaders {
 func GetCategory(ctx context.Context, id string) (*gql.Category, error) {
 	loaders := For(ctx)
 	result, err := loaders.CategoryLoader.Load(ctx, dataloader.StringKey(id))()
+
 	return result.(*gql.Category), err
 }
 
@@ -98,6 +104,7 @@ func GetCategory(ctx context.Context, id string) (*gql.Category, error) {
 func GetCategories(ctx context.Context, ids dataloader.Keys) ([]*gql.Category, []error) {
 	loaders := For(ctx)
 	result, err := loaders.CategoryLoader.LoadMany(ctx, ids)()
+
 	if err != nil {
 		return nil, err
 	}
@@ -106,5 +113,6 @@ func GetCategories(ctx context.Context, ids dataloader.Keys) ([]*gql.Category, [
 	for _, r := range result {
 		categories = append(categories, r.(*gql.Category))
 	}
+
 	return categories, nil
 }

@@ -29,10 +29,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to db: %v", err)
 	}
+
 	defer cleanup()
+
 	var srv http.Handler = handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{
 		DB: db,
 	}}))
+
 	srv = loaders.Middleware(db, srv)
 
 	http.Handle("/", playground.Handler("SaaS Sample API", "/query"))
