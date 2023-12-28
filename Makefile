@@ -6,6 +6,8 @@ run:
 	go run main.go
 test:
 	go test -v ./e2etest -count=1 -overlay=`testtime`
+lint:
+	golangci-lint run
 gqlgen:
 	go get github.com/99designs/gqlgen@latest
 	go run github.com/99designs/gqlgen generate
