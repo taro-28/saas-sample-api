@@ -6,10 +6,11 @@ package gql
 
 import (
 	"context"
-	"log"
 	"time"
 
+	"github.com/morikuni/failure"
 	"github.com/rs/xid"
+	"github.com/taro-28/saas-sample-api/fail"
 	gql "github.com/taro-28/saas-sample-api/gql/model"
 	"github.com/taro-28/saas-sample-api/models"
 )
@@ -18,7 +19,7 @@ import (
 func (r *categoryResolver) Todos(ctx context.Context, obj *gql.Category) ([]*gql.Todo, error) {
 	todo, err := models.AllTodos(ctx, r.DB)
 	if err != nil {
-		return nil, err
+		return nil, failure.Translate(err, fail.InternalServerError, failure.Message("failed to get todos"))
 	}
 
 	var todos []*gql.Todo
@@ -46,7 +47,7 @@ func (r *mutationResolver) CreateCategory(ctx context.Context, input gql.CreateC
 	}
 
 	if err := category.Insert(ctx, r.DB); err != nil {
-		return nil, err
+		return nil, failure.Translate(err, fail.InternalServerError, failure.Message("failed to insert category"))
 	}
 
 	return &gql.Category{
@@ -60,12 +61,12 @@ func (r *mutationResolver) CreateCategory(ctx context.Context, input gql.CreateC
 func (r *mutationResolver) UpdateCategory(ctx context.Context, input gql.UpdateCategoryInput) (*gql.Category, error) {
 	category, err := models.CategoryByID(ctx, r.DB, input.ID)
 	if err != nil {
-		return nil, err
+		return nil, failure.Translate(err, fail.NotFound, failure.Messagef("category not found by id: %s", input.ID))
 	}
 
 	category.Name = input.Name
 	if err := category.Update(ctx, r.DB); err != nil {
-		return nil, err
+		return nil, failure.Translate(err, fail.InternalServerError, failure.Message("failed to update category"))
 	}
 
 	return &gql.Category{
@@ -79,11 +80,11 @@ func (r *mutationResolver) UpdateCategory(ctx context.Context, input gql.UpdateC
 func (r *mutationResolver) DeleteCategory(ctx context.Context, id string) (string, error) {
 	category, err := models.CategoryByID(ctx, r.DB, id)
 	if err != nil {
-		return "", err
+		return "", failure.Translate(err, fail.NotFound, failure.Messagef("category not found by id: %s", id))
 	}
 
 	if err = category.Delete(ctx, r.DB); err != nil {
-		log.Fatalf("failed to delete category: %v", err)
+		return "", failure.Translate(err, fail.InternalServerError, failure.Message("failed to delete category"))
 	}
 
 	return id, nil
@@ -93,7 +94,7 @@ func (r *mutationResolver) DeleteCategory(ctx context.Context, id string) (strin
 func (r *queryResolver) Categories(ctx context.Context) ([]*gql.Category, error) {
 	categories, err := models.AllCategorys(ctx, r.DB)
 	if err != nil {
-		return nil, err
+		return nil, failure.Translate(err, fail.InternalServerError, failure.Message("failed to get categories"))
 	}
 
 	var gqlCategories []*gql.Category
