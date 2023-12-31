@@ -4,11 +4,12 @@ package loaders
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"net/http"
 	"time"
 
 	"github.com/graph-gophers/dataloader"
+	"github.com/morikuni/failure"
+	"github.com/taro-28/saas-sample-api/fail"
 	gql "github.com/taro-28/saas-sample-api/gql/model"
 	"github.com/taro-28/saas-sample-api/models"
 )
@@ -101,13 +102,17 @@ func For(ctx context.Context) *Loaders {
 func GetCategory(ctx context.Context, id string) (*gql.Category, error) {
 	loaders := For(ctx)
 	result, err := loaders.CategoryLoader.Load(ctx, dataloader.StringKey(id))()
-	typed, ok := result.(*gql.Category)
 
-	if !ok {
-		return nil, errors.New("unexpected type from dataloader")
+	if err != nil {
+		return nil, failure.Translate(err, fail.InternalServerError, failure.Message("failed to get category"))
 	}
 
-	return typed, err
+	typed, ok := result.(*gql.Category)
+	if !ok {
+		return nil, failure.Translate(err, fail.InternalServerError, failure.Message("unexpected type from dataloader"))
+	}
+
+	return typed, nil
 }
 
 // GetCategories returns many categories by ids efficiently.
@@ -124,7 +129,12 @@ func GetCategories(ctx context.Context, ids dataloader.Keys) ([]*gql.Category, [
 	for _, r := range result {
 		typed, ok := r.(*gql.Category)
 		if !ok {
-			return nil, []error{errors.New("unexpected type from dataloader")}
+			return nil, []error{
+				failure.New(
+					fail.InternalServerError,
+					failure.Message("unexpected type from dataloader"),
+				),
+			}
 		}
 
 		categories = append(categories, typed)

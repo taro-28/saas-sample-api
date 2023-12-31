@@ -7,10 +7,11 @@ package gql
 import (
 	"context"
 	"database/sql"
-	"log"
 	"time"
 
+	"github.com/morikuni/failure"
 	"github.com/rs/xid"
+	"github.com/taro-28/saas-sample-api/fail"
 	gql "github.com/taro-28/saas-sample-api/gql/model"
 	loaders "github.com/taro-28/saas-sample-api/loader"
 	"github.com/taro-28/saas-sample-api/models"
@@ -26,7 +27,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input gql.CreateTodoI
 			}, nil
 		}
 		if _, err := models.CategoryByID(ctx, r.DB, *input.CategoryID); err != nil {
-			return nil, err
+			return nil, failure.Translate(err, fail.NotFound, failure.Messagef("category not found by id: %s", *input.CategoryID))
 		}
 		return &sql.NullString{
 			String: *input.CategoryID,
@@ -46,7 +47,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input gql.CreateTodoI
 	}
 
 	if err := todo.Insert(ctx, r.DB); err != nil {
-		return nil, err
+		return nil, failure.Translate(err, fail.InternalServerError, failure.Message("failed to insert todo"))
 	}
 
 	return &gql.Todo{
@@ -62,7 +63,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input gql.CreateTodoI
 func (r *mutationResolver) UpdateTodo(ctx context.Context, input gql.UpdateTodoInput) (*gql.Todo, error) {
 	todo, err := models.TodoByID(ctx, r.DB, input.ID)
 	if err != nil {
-		return nil, err
+		return nil, failure.Translate(err, fail.NotFound, failure.Messagef("todo not found by id: %s", input.ID))
 	}
 
 	todo.Content = input.Content
@@ -74,7 +75,7 @@ func (r *mutationResolver) UpdateTodo(ctx context.Context, input gql.UpdateTodoI
 			}, nil
 		}
 		if _, err := models.CategoryByID(ctx, r.DB, *input.CategoryID); err != nil {
-			return nil, err
+			return nil, failure.Translate(err, fail.NotFound, failure.Messagef("category not found by id: %s", *input.CategoryID))
 		}
 		return &sql.NullString{
 			String: *input.CategoryID,
@@ -85,12 +86,9 @@ func (r *mutationResolver) UpdateTodo(ctx context.Context, input gql.UpdateTodoI
 		return nil, err
 	}
 	todo.CategoryID = *categoryId
-	if err != nil {
-		return nil, err
-	}
 
 	if err := todo.Update(ctx, r.DB); err != nil {
-		return nil, err
+		return nil, failure.Translate(err, fail.InternalServerError, failure.Messagef("failed to update todo by id: %s", input.ID))
 	}
 
 	return &gql.Todo{
@@ -106,13 +104,13 @@ func (r *mutationResolver) UpdateTodo(ctx context.Context, input gql.UpdateTodoI
 func (r *mutationResolver) UpdateTodoDone(ctx context.Context, input gql.UpdateTodoDoneInput) (*gql.Todo, error) {
 	todo, err := models.TodoByID(ctx, r.DB, input.ID)
 	if err != nil {
-		return nil, err
+		return nil, failure.Translate(err, fail.NotFound, failure.Messagef("todo not found by id: %s", input.ID))
 	}
 
 	todo.Done = input.Done
 
 	if err := todo.Update(ctx, r.DB); err != nil {
-		return nil, err
+		return nil, failure.Translate(err, fail.InternalServerError, failure.Messagef("failed to update todo by id: %s", input.ID))
 	}
 
 	return &gql.Todo{
@@ -128,11 +126,11 @@ func (r *mutationResolver) UpdateTodoDone(ctx context.Context, input gql.UpdateT
 func (r *mutationResolver) DeleteTodo(ctx context.Context, id string) (string, error) {
 	todo, err := models.TodoByID(ctx, r.DB, id)
 	if err != nil {
-		return "", err
+		return "", failure.Translate(err, fail.NotFound, failure.Messagef("todo not found by id: %s", id))
 	}
 
 	if err = todo.Delete(ctx, r.DB); err != nil {
-		return "", err
+		return "", failure.Translate(err, fail.InternalServerError, failure.Messagef("failed to delete todo by id: %s", id))
 	}
 
 	return id, nil
@@ -142,7 +140,7 @@ func (r *mutationResolver) DeleteTodo(ctx context.Context, id string) (string, e
 func (r *queryResolver) Todos(ctx context.Context) ([]*gql.Todo, error) {
 	todos, err := models.AllTodos(ctx, r.DB)
 	if err != nil {
-		log.Fatalf("failed to get all todos: %v", err)
+		return nil, failure.Translate(err, fail.InternalServerError, failure.Message("failed to get all todos"))
 	}
 
 	var gqlTodos []*gql.Todo
